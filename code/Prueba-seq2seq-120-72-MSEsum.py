@@ -65,10 +65,12 @@ from common.utils.datasets import dataset_seq2seq as ds
 from common.utils.trainers import trainer_seq2seq as tr
 from models.seq2seq import model as md
 
+
 PASADO = 5 * 24 
 FUTURO = 3 * 24
 BATCH_SIZE = 1
-EPOCHS = 20
+EPOCHS = 30
+NAME = f'seq2seq-{PASADO}-{FUTURO}-MSEsum'
 device = 'cuda'
 COLUMNA_VALOR = 'Temperatura'
 COLUMNA_TIEMPO = ['day_sin', 'day_cos', 'dayofweek_sin', 'dayofweek_cos',
@@ -163,22 +165,22 @@ model_optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2, weight_decay=1e
 #scheduler = optim.lr_scheduler.OneCycleLR(model_optimizer, max_lr=3e-3, steps_per_epoch=len(train_dataloader), epochs=6)
 
 
-trainer = tr.TorchTrainer('seq2seq',
-                    model,
+trainer = tr.TorchTrainer(NAME,
+                        model,
                        [encoder_optimizer, decoder_optimizer],
                        loss_function,   
                        [encoder_scheduler, decoder_scheduler],
                        device,
                        scheduler_batch_step=True,
                        pass_y=True,
-                       checkpoint_folder= "/home/diego/weather-control/experiments/modelchkpts/seq2seq_chkpts",
-                       runs_folder= "/home/diego/weather-control/experiments/runs/seq2seq"
+                       checkpoint_folder= f'/home/diego/weather-control/experiments/modelchkpts/{NAME}_chkpts',
+                       runs_folder= f'/home/diego/weather-control/experiments/runs/{NAME}'
                        #additional_metric_fns={'SMAPE': smape_exp_loss}
                        )
 
 
 #trainer.lr_find(train_dataloader, model_optimizer, start_lr=1e-5, end_lr=1e-2, num_iter=500)
-#trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True)
+trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True)
 
 # for it, (Xt, X, Yt, Y) in enumerate(train_dataloader):
 #     encoder_optimizer.zero_grad()
@@ -197,22 +199,22 @@ trainer = tr.TorchTrainer('seq2seq',
 #         print("Y:", np.any(np.isnan(Y.numpy())))
 #         print("ypred:", ypred)
 #%%
-# # cargar mejor checkpoint
-trainer._load_checkpoint(epoch=12)
-y_pred = trainer.predict(test_dataloader)  # y_pred (len(test), N, L, F(d)out) (4000,1,72,1)
+# # # cargar mejor checkpoint
+# trainer._load_checkpoint(epoch=20)
+# y_pred = trainer.predict(test_dataloader)  # y_pred (len(test), N, L, F(d)out) (4000,1,72,1)
 
-print(len(y_pred))
-predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)),
-                             'Ypred': np.zeros(len(y_pred))}).astype('object')
+# print(len(y_pred))
+# predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)),
+#                              'Ypred': np.zeros(len(y_pred))}).astype('object')
 
-for it, (xt, x, yt, y) in enumerate(tqdm((test_dataloader))):
-    predicciones.iloc[it].loc['Y'] = list(np.squeeze(y.numpy()))
-    predicciones.iloc[it].loc['Ypred'] = list(np.squeeze(y_pred[it]))
-# %%
-import matplotlib.pyplot as plt
+# for it, (xt, x, yt, y) in enumerate(tqdm((test_dataloader))):
+#     predicciones.iloc[it].loc['Y'] = list(np.squeeze(y.numpy()))
+#     predicciones.iloc[it].loc['Ypred'] = list(np.squeeze(y_pred[it]))
+# # %%
+# import matplotlib.pyplot as plt
 
-plt.plot(predicciones.iloc[17].loc['Y'], 'b')
-plt.plot(predicciones.iloc[17].loc['Ypred'], 'r')
+# plt.plot(predicciones.iloc[1700].loc['Y'], 'b')
+# plt.plot(predicciones.iloc[1700].loc['Ypred'], 'r')
 
 
-# %%
+# # %%

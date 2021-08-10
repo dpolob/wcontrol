@@ -93,14 +93,15 @@ class DecoderCell(nn.Module):
             input_size=input_feature_len,
             hidden_size=hidden_size,
         )
-        self.out = nn.Linear(hidden_size, 1)
+        self.out1 = nn.Linear(hidden_size, 50)
+        self.out2 = nn.Linear(50, 1)
         self.attention = False
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, y, prev_hidden):
         rnn_hidden = self.decoder_rnn_cell(y, prev_hidden) # (N, Hout)
-        output = self.out(rnn_hidden)  # (N, 1)
-        return output, self.dropout(rnn_hidden)  # (N,1), (N, Hout)
+        output = self.out2(self.out1(rnn_hidden))  # (N, 1)
+        return output, rnn_hidden  # (N,1), (N, Hout)
 
 # Encoder-Decoder
 class EncoderDecoderWrapper(nn.Module):
@@ -111,7 +112,7 @@ class EncoderDecoderWrapper(nn.Module):
         output_size
 
     """
-    def __init__(self, encoder: RNNEncoder, decoder_cell: DecoderCell, output_size: int, output_sequence_len: int, teacher_forcing=0.3, device='cpu'):
+    def __init__(self, encoder: RNNEncoder, decoder_cell: DecoderCell, output_size: int, output_sequence_len: int, teacher_forcing=0.2, device='cpu'):
         super().__init__()
         self.encoder = encoder
         self.decoder_cell = decoder_cell
@@ -120,7 +121,7 @@ class EncoderDecoderWrapper(nn.Module):
         self.teacher_forcing = teacher_forcing
         self.device = device
 
-    def forward(self, x_t, x, y_t, y=None, teacher = None):
+    def forward(self, x_t, x, y_t, y=None, teacher=None):
         encoder_input = torch.cat((x_t, x), 2)
         _, encoder_hidden = self.encoder(encoder_input)  # (N, Hout​)
         #print("encoder_hidden:", encoder_hidden.shape)
@@ -130,12 +131,15 @@ class EncoderDecoderWrapper(nn.Module):
         #print("decoder_input:", decoder_input.shape)
         
         outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, L, 1)
-
+        tf = self.teacher_forcing
         for i in range(self.output_sequence_len):
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)  # (N,1), (N, Hout) = decoder((N,T+1),(N, Hout))
                 
             outputs[:,i, :] = decoder_output
-            if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < self.teacher_forcing):
+            if i==40:
+                tf = self.teacher_forcing * 2
+
+            if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < tf):
                 decoder_input = torch.cat((y_t[:, i, :], y[:,i,:]), axis=1)  # (N,T) + (N,1) = (N,T+1)
             else:
                 decoder_input = torch.cat((y_t[:, i, :], decoder_output), 1)  # (N,T) + (N,1) = (N,T+1)

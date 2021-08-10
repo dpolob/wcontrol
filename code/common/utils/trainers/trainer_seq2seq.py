@@ -11,8 +11,8 @@ from tqdm import tqdm
 #from tqdm.notebook import tqdm   # FOR SCRIP
 import pickle
 
-def save_dict(path, name, _dict):
-    with open(path/f'{name}.pickle', 'wb') as handle:
+def save_dict(path, _dict):
+    with open(path, 'wb') as handle:
         pickle.dump(_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 class TorchTrainer():
@@ -38,14 +38,14 @@ class TorchTrainer():
         
     def _get_checkpoints(self, name=None):
         checkpoints = []
-        checkpoint_path = self.checkpoint_path if name is None else pathlib.Path(f'./experiments/modelchkpts/{name}_chkpts')
+        #checkpoint_path = self.checkpoint_path if name is not None else pathlib.Path(f'./experiments/modelchkpts/{name}_chkpts')
         for cp in self.checkpoint_path.glob('checkpoint_*'):
             checkpoint_name = str(cp).split('/')[-1]
             checkpoint_epoch = int(checkpoint_name.split('_')[-1])
             checkpoints.append((cp, checkpoint_epoch))
         checkpoints = sorted(checkpoints, key=lambda x: x[1], reverse=True)
-        if pathlib.Path(f'self.checkpoint_path/valid_losses.pickle').is_file():
-            self.valid_losses = pd.read_pickle(self.checkpoint_path/'valid_losses.pickle')
+        if pathlib.Path(self.checkpoint_path/'valid_losses.pickle').is_file():
+            self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb'))
         else:
             self.valid_losses = {}
         return checkpoints
@@ -72,7 +72,7 @@ class TorchTrainer():
         if valid_loss:
             checkpoint.update({'loss': valid_loss})
         torch.save(checkpoint, self.checkpoint_path/f'checkpoint_{epoch}')
-        save_dict(self.checkpoint_path, 'valid_losses', self.valid_losses)
+        save_dict(self.checkpoint_path / 'valid_losses.pickle', self.valid_losses)
         print(f'saved checkpoint for epoch {epoch}')
         self._clean_outdated_checkpoints()
 
@@ -131,7 +131,7 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xt, X, Yt, Y, optimize, pass_y, additional_metrics=None):
+    def _loss_batch(self, Xt, X, Yt, Y, teacher, optimize, pass_y, additional_metrics=None):
         #if type(xb) is list:
         #    xb = [xbi.to(self.device) for xbi in xb]
         #else:
@@ -144,9 +144,9 @@ class TorchTrainer():
         Y = Y.to(self.device)
         
         if pass_y:
-            y_pred = self.model(Xt, X, Yt, Y)
+            y_pred = self.model(Xt, X, Yt, Y, teacher)
         else:
-            y_pred = self.model(Xt, X, Yt, Y)
+            y_pred = self.model(Xt, X, Yt, Y, teacher)
 
         loss = self.loss_fn(y_pred, Y)
         if additional_metrics is not None:
@@ -169,7 +169,7 @@ class TorchTrainer():
         self.model.eval()
         eval_bar = tqdm(dataloader, leave=False)
         with torch.no_grad():
-            loss_values = [self._loss_batch(Xt, X, Yt, Y, False, False, self.additional_metric_fns) for Xt, X, Yt, Y in eval_bar]
+            loss_values = [self._loss_batch(Xt, X, Yt, Y, False, False, False, self.additional_metric_fns) for Xt, X, Yt, Y in eval_bar]
             if len(loss_values[0]) > 1:
                 loss_value = np.mean([lv[0] for lv in loss_values])
                 additional_metrics = np.mean([lv[1] for lv in loss_values], axis=0)
@@ -236,7 +236,7 @@ class TorchTrainer():
             running_loss = 0
             training_bar = tqdm(train_dataloader, leave=False)
             for it, (Xt, X, Yt, Y) in enumerate(training_bar):
-                loss = self._loss_batch(Xt, X, Yt, Y, True, self.pass_y)
+                loss = self._loss_batch(Xt, X, Yt, Y, True, True, self.pass_y)
                 running_loss += loss
                 training_bar.set_description("loss %.4f" % loss)
                 if it % 100 == 99:
