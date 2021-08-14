@@ -27,7 +27,7 @@ class TorchTrainer():
         self.runs_path = pathlib.Path(kwargs.get('runs_folder', f'./experiments/runs/{name}'))
         self.checkpoint_path.mkdir(parents=True, exist_ok=True)
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
-        self.max_checkpoints = kwargs.get('max_checkpoints', 25)
+        self.max_checkpoints = kwargs.get('max_checkpoints', 50)
         self.writer = SummaryWriter(self.runs_path)
         
         self.scheduler_batch_step = kwargs.get('scheduler_batch_step', False)
@@ -44,8 +44,9 @@ class TorchTrainer():
             checkpoint_epoch = int(checkpoint_name.split('_')[-1])
             checkpoints.append((cp, checkpoint_epoch))
         checkpoints = sorted(checkpoints, key=lambda x: x[1], reverse=True)
-        if pathlib.Path(self.checkpoint_path/'valid_losses.pickle').is_file():
+        if (self.checkpoint_path/'valid_losses.pickle').is_file():
             self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb'))
+            print('valid_losses file found!')
         else:
             self.valid_losses = {}
         return checkpoints
