@@ -6,6 +6,7 @@
 mkdir data
 mkdir data/raw
 mkdir data/processed
+mkdir data/outputs
 
 #CODE
 mkdir code

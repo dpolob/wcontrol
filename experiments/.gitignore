@@ -1,0 +1,9 @@
+runs/*
+!*.yml
+
+modelchkpts/*
+!modelchkpts/Zmodel
+modelchkpts/Zmodel/*
+!modelchkpts/Zmodel/experimento7_72-72_Sum0505_model2_lr1e-2-1e-3nosche
+modelchkpts/Zmodel/experimento7_72-72_Sum0505_model2_lr1e-2-1e-3nosche/*
+

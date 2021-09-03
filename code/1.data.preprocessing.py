@@ -45,6 +45,7 @@ from pathlib import Path
 from tqdm import tqdm
 from colorama import Fore, Back, Style
 from math import pi,sqrt,sin,cos,atan2
+from attrdict import AttrDict
 
 import common.utils.indicesbioclimaticos as bio
 from common.utils.scalers import Escalador
@@ -85,36 +86,31 @@ def haversine(lat1: float, long1: float, lat2: float, long2: float) -> float:
 
 @click.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
-@click.option('--output', type=click.Path(exists=False), help='path/to/output.pickle Ruta donde guardar los archivos procesados')
-def preprocesado(file, output):
+def preprocesado(file):
     """
     Script para el preprocesado de datos de las estaciones.
     Las estaciones se especifican en el archivo de configuracion .yml
     """
 
-    if file is None:
-        file = Path('./setup.yml')
-        if not file.is_file():
-            raise Exception(f"{file} no existe. Por favor defina un archivo con --file")
-        print(f"Usando {file} como archivo de configuracion")
-        with open(file, 'r') as handler:
-            config = yaml.safe_load(handler)
-    if output is None:
-        output = Path(f"/home/diego/weather-control/data/processed/{config['experiment-name']}")
-        output.mkdir(parents=True, exist_ok=True)
-        output = output / "output.pickle"
-    else:
-        output = Path(output)
-        if not output.parent.is_dir():
-            raise Exception(f"{output.parent} no existe!")
-    
     try:
-        estaciones = config["estaciones"]
-        escaladores = config["preprocessing"]["escaladores"]
-        outliers = config['preprocessing']['outliers']
-    except Exception as e:
-        print("No se han definido estaciones, outlier o escaladores en el archivo .yml")
-
+        with open(file, 'r') as handler:
+            cfg = AttrDict(yaml.safe_load(handler))
+        print(f"Usando {file} como archivo de configuracion")
+    except:
+        print(f"{file} no existe. Por favor defina un archivo con --file")
+        exit()
+        
+    if 'datasets' not in cfg.paths.keys() or 'preprocesado' not in cfg.keys() or \
+        'estaciones' not in cfg.keys():
+        print(Fore.RED + f"{file} no contine informacion básica")
+    else:
+        output = Path(cfg.paths.datasets)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        
+    estaciones = list(cfg.estaciones)
+    escaladores = cfg.preprocesado.escaladores
+    outliers = cfg.preprocesado.outliers
+    
     cdg = distanciasCdG([x['latitud'] for x in estaciones], 
                         [x['longitud'] for x in estaciones],
                         [x['altitud'] for x in estaciones])
@@ -124,7 +120,6 @@ def preprocesado(file, output):
     for estacion in tqdm(estaciones, desc='Estaciones'):
         ruta = Path(estacion["ruta"])
         metricas = estacion["metricas"]
-        
         
         print(Fore.YELLOW + f"{estacion['nombre']}" + Style.RESET_ALL)
         print(f"\tLeyendo estacion desde {ruta}", end='')
@@ -139,6 +134,13 @@ def preprocesado(file, output):
             df.set_index(df['fecha'], drop=True, inplace=True)
             print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
         
+        print(f"\tComprobando variables de entrada", end='')
+        if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns:
+            print("\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]")
+            continue
+        else:
+            print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+
         print(f"\tComprobando outliers", end='')
         for i, metrica in enumerate(metricas):
             outlier = outliers[metrica]
@@ -301,6 +303,7 @@ def preprocesado(file, output):
         print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
 
         dfs.append(df)
+        
     print(f"Organizando índices:", end='')
     fecha_min = None
     fecha_max = None

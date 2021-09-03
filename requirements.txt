@@ -6,4 +6,6 @@ pandas
 jupyterlab
 click
 pyyaml
+attrdict
+importlib
 
