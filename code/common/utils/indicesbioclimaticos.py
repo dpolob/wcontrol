@@ -99,7 +99,7 @@ def indice_lang(precipitacion: np.ndarray, temperatura: np.ndarray,  muestras_di
 
     Args:
         precipitacion (np.ndarray): precipitacion media anual (365 dias)
-        temperatura (np.ndarray): temperatura media anual (365)
+        temperatura (np.ndarray): temperatura media anual (365 dias)
         muestras_dia (int): en caso de la frecuencia no se diaria se especifica la frecuencia
 
     Returns:
@@ -132,7 +132,7 @@ def indice_gasparin(precipitacion: np.ndarray, temperatura: np.ndarray, muestras
 
     Args:
         precipitacion (np.ndarray): precipitacion media anual (365 dias)
-        temperatura (np.ndarray): temperatura media anual (365)
+        temperatura (np.ndarray): temperatura media anual (365 dias)
         muestras_dia (int): en caso de la frecuencia no se diaria se especifica la frecuencia
 
     Returns:

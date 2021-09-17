@@ -1,0 +1,257 @@
+experiment: "experimento13_72-72_Sum0505_model2_lr1e-2-1e-3nosche"
+paths:
+  datasets: "/home/diego/weather-control/data/processed/dataset_estaciones.pickle"
+  runs: "/home/diego/weather-control/experiments/runs/Zmodel/"
+  checkpoints: "/home/diego/weather-control/experiments/modelchkpts/Zmodel/"
+  predictions: "/home/diego/weather-control/data/outputs/"
+preprocesado:
+  outliers:
+    temperatura:
+      min: -10
+      max: 43
+      tol: 10
+    hr:
+      min: 0
+      max: 100
+      tol: 0
+    precipitacion:
+      min: 0
+      max: 104 # desde 2010
+      tol: 0
+  escaladores:
+    temperatura:
+      min: -20
+      max: 50
+    hr:
+      min: 0
+      max: 100
+    precipitacion:
+      min: 0
+      max: 30 
+estaciones:
+  - nombre: "Villar de Torre"
+    id: 25
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/25.csv"
+    longitud: -2.8596367
+    latitud: 42.3809186
+    altitud: 727
+  # - nombre: "Pazuengos"
+  #   id: 28
+  #   format: "%Y-%m-%d %H:%M:%S"
+  #   metricas:
+  #     - temperatura
+  #     - hr
+  #     - precipitacion
+  #   ruta: "/home/diego/weather-control/data/processed/28.csv"
+  #   longitud: 2.9137689
+  #   latitud: 42.3429392
+  #   altitud: 1299
+  - nombre: "Arenzana de Abajo"
+    id: 35
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/35.csv"
+    longitud: -2.7242639
+    latitud: 42.3925069
+    altitud: 523
+  - nombre: "Baños de Río Tobía"
+    id: 102
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/102.csv"
+    longitud: -2.7540781
+    latitud: 42.3424721
+    altitud: 566
+  - nombre: "Nájera"
+    id: 1289
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/1289.csv"
+    longitud: -2.7266667
+    latitud: 42.4141667
+    altitud: 500
+  - nombre: "Arenzana de Abajo"
+    id: 2082
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/2082.csv"
+    longitud: -2.7357180
+    latitud: 42.3828770
+    altitud: 510            
+  - nombre: "Badaran-El Hombro"
+    id: 2684
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/2684.csv"
+    longitud: -2.8634773
+    latitud: 42.3721760
+    altitud: 751
+  - nombre: "Somalcampo"
+    id: 2698
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/2698.csv"
+    longitud: -2.8912790
+    latitud: 42.3905560
+    altitud: 815
+  - nombre: "Villaverde"
+    id: 2706
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/2706.csv"
+    longitud: -2.7978570
+    latitud: 42.3320800
+    altitud: 782
+  - nombre: "Cordovin"
+    id: 2966
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/2966.csv"
+    longitud: -2.8147230
+    latitud: 42.3867790
+    altitud: 594
+  - nombre: "Cabezos"
+    id: 3002
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/3002.csv"
+    longitud: -2.7905110
+    latitud: 42.4101020
+    altitud: 600
+  - nombre: "Recilla"
+    id: 3003
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/3003.csv"
+    longitud: -2.8386430
+    latitud: 42.4157540
+    altitud: 700
+  - nombre: "San Roque"
+    id: 3005
+    format: "%Y-%m-%d %H:%M:%S"
+    metricas:
+      - temperatura
+      - hr
+      - precipitacion
+    ruta: "/home/diego/weather-control/data/processed/3005.csv"
+    longitud: -2.7683200
+    latitud: 42.4172120
+    altitud: 600      
+entrenamiento:
+  use_cuda: True
+  save_model: True
+  plot_intermediate_results: True
+  pasado: 72
+  futuro: 72 
+  epochs: 70
+  loss_function:
+    loss_fn: 'sum'
+    reduction: 'mean'
+    coefs: (0.5, 0.5)
+  encoder:
+    lr: 0.01
+    rnn_num_layers: 1
+    hidden_size: 100
+    bidirectional: False
+    rnn_dropout: 0.0  # only for rnn_num_layers > 1
+  decoder:
+    lr: 0.01
+    hidden_size: 100
+    dropout: 0.0
+  scheduler: True
+  model:
+    name: "seq2seq_2layers"
+    teacher_forcing: 0.2
+    duplicate_teaching: 40
+  prediccion: "temperatura"
+  features:
+    - 'hr'
+    - 'precipitacion'
+    - 'biotemperatura'
+    - 'integraltermica'
+    - 'indicelasser'
+    - 'indicelang'
+    - 'indiceangtrom'
+    - 'indicegasparin'
+    - 'indicemartonne'
+    - 'indicebirot'
+    - 'indicehugling'
+    - 'tempmacd'
+    - 'tempmacdsenal'
+    - 'hrmacd'
+    - 'hrmacdsenal'
+    - 'precipitacionmacd'
+    - 'precipitacionmacdsenal'
+    - 'dia_sin'
+    - 'dia_cos'
+    - 'diasemana_sin'
+    - 'diasemana_cos'
+    - 'mes_sin'
+    - 'mes_cos'
+    - 'distancia'
+    - 'altitud'
+  definidas:
+    - 'dia_sin'
+    - 'dia_cos'
+    - 'diasemana_sin'
+    - 'diasemana_cos'
+    - 'mes_sin'
+    - 'mes_cos'
+    - 'distancia'
+    - 'altitud'
+  dataloaders:
+    train:
+      enable: True
+      fecha_inicio: "2018-01-01 00:00:00"
+      fecha_fin: "2020-12-31 23:00:00"
+    validation:
+      enable: True
+      fecha_inicio: "2021-01-01 00:00:00"
+      fecha_fin: "2021-04-30 23:00:00"
+prediccion:
+  use_cuda: True
+  use_checkpoint: "best"  # number of checkpoint or "best"
+  dataloaders:
+    test:
+      enable: True
+      fecha_inicio: "2021-05-01 00:00:00"
+      fecha_fin: "2021-05-10 00:00:00"
+  visualization:
+    - "2020-12-31 23:00:00"
+    - "2020-12-31 23:00:00"
+

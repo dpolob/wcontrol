@@ -84,9 +84,14 @@ def haversine(lat1: float, long1: float, lat2: float, long2: float) -> float:
     km = 6367 * c
     return abs(km)
 
-@click.command()
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
-def preprocesado(file):
+def zmodel(file):
     """
     Script para el preprocesado de datos de las estaciones.
     Las estaciones se especifican en el archivo de configuracion .yml
@@ -100,8 +105,8 @@ def preprocesado(file):
         print(f"{file} no existe. Por favor defina un archivo con --file")
         exit()
         
-    if 'datasets' not in cfg.paths.keys() or 'preprocesado' not in cfg.keys() or \
-        'estaciones' not in cfg.keys():
+    if 'datasets' not in cfg.paths.keys() or 'preprocesado' not in cfg.keys() \
+        or 'estaciones' not in cfg.keys():
         print(Fore.RED + f"{file} no contine informacion básica")
     else:
         output = Path(cfg.paths.datasets)
@@ -331,7 +336,228 @@ def preprocesado(file):
 
     print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
 
+@cli.command()
+@click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
+def pmodel(file):
+    """
+
+    """
+    try:
+        with open(file, 'r') as handler:
+            cfg = AttrDict(yaml.safe_load(handler))
+        print(f"Usando {file} como archivo de configuracion")
+    except:
+        print(f"{file} no existe. Por favor defina un archivo con --file")
+        exit()
+    
+    if 'dataset_pmodel' not in cfg.paths.keys() or 'preprocesado' not in cfg.keys() or \
+        'estaciones' not in cfg.Pmodel.keys():
+        print(Fore.RED + f"{file} no contine informacion básica")
+    else:
+        output = Path(cfg.paths.dataset_pmodel)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        
+    estacion = list(cfg.Pmodel.estaciones)[0]
+    estaciones = list(cfg.Zmodel.estaciones)
+    
+    escaladores = cfg.preprocesado.escaladores
+    outliers = cfg.preprocesado.outliers
+    
+    cdg = distanciasCdG([x['latitud'] for x in estaciones], 
+                        [x['longitud'] for x in estaciones],
+                        [x['altitud'] for x in estaciones])
+
+
+    ruta = Path(estacion["ruta"])
+    metricas = estacion["metricas"]
+        
+    print(Fore.YELLOW + f"{estacion['nombre']}" + Style.RESET_ALL)
+    print(f"\tLeyendo estacion desde {ruta}", end='')
+    
+    if not ruta.is_file():
+        print(Fore.RED + f"No existe el archivo para {estacion['nombre']}" + Style.RESET_ALL)
+        print("\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]")
+        exit()
+    
+    df = pd.read_csv(ruta, sep=',', decimal='.', header='infer')
+
+    df['fecha'] = pd.to_datetime(df['fecha'], format=estacion["format"])
+    df.set_index('fecha', drop=True, inplace=True)
+    df.drop(columns=['fecha'], inplace=True)
+    print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    
+    print(f"\tComprobando variables de entrada", end='')
+    if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns:
+        print("\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]")
+        exit()
+    else:
+        print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+
+    print(f"\tComprobando outliers", end='')
+    for i, metrica in enumerate(metricas):
+        outlier = outliers[metrica]
+        if metrica in df.columns:
+            assert not any(df[metrica] > outlier['max'] * (1 + outlier['tol'] / 100)), Fore.RED + f"Valores de {metrica} superan el valor de {outlier['max']}" + Style.RESET_ALL
+            assert not any(df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100)), Fore.RED + f"Valores de {metrica} superan el valor de {outlier['min']}" + Style.RESET_ALL
+    print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+
+    print(f"\tResample a 1 hora", end='')
+    df = df.resample('1H').mean()
+    print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+  
+    print(f"\tComprobando longitud del dataset (mínimo 30 días)", end='')
+    if len(df) > 30 * 24:
+        print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    else:
+        print("\t[ " + Fore.RED +"FAIL" + Style.RESET_ALL + " ]")
+        exit()
+
+    print(f"\tEliminando NaNs...", end='')
+    print(df.isna().sum().sum(), end='')
+    df.interpolate(inplace=True)  # eliminar NaNs
+    print(" -> " + str(df.isna().sum().sum()), end='')
+    print("\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    if df.isna().sum().sum() != 0:
+        print(Fore.RED + "\tQuedan NaNs en el dataset. Por favor compruebe" + Style.RESET_ALL)
+        print(Fore.YELLOW + "\tForzando la eliminacion" + Style.RESET_ALL)
+        df.dropna(inplace=True)
+    
+    print(f"\tAplicando escalado:", end='')
+    
+    print(f"\tCalculando variables climáticas", end='')
+    variables_bioclimaticas =[]
+    if set(['temperatura']).issubset(set(df.columns)): 
+        df['integraltermica'] = bio.integral_termica(temperatura=np.array(df['temperatura'].values))
+        assert df['integraltermica'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['integraltermica']" + Style.RESET_ALL
+        variables_bioclimaticas.append('integraltermica')
+    
+    if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
+        df['indicelasser'] = bio.indice_lasser(precipitacion=np.array(df['precipitacion'].values),
+                                            temperatura=np.array(df['temperatura'].values),
+                                            muestras_dia=24)
+        variables_bioclimaticas.append('indicelasser')
+        assert df['indicelasser'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicelasser']" + Style.RESET_ALL
+        
+    if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
+        df['indiceangtrom'] = bio.indice_angtrom(precipitacion=np.array(df['precipitacion'].values),
+                                                temperatura=np.array(df['temperatura'].values),
+                                                muestras_dia=24)
+        variables_bioclimaticas.append('indiceangtrom')
+        assert df['indiceangtrom'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['angtrom']" + Style.RESET_ALL
+        
+    if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
+        df['indicemartonne'] = bio.indice_martonne(precipitacion=np.array(df['precipitacion'].values),
+                                                    temperatura=np.array(df['temperatura'].values),
+                                                    muestras_dia=24)
+        variables_bioclimaticas.append('indicemartonne')
+        assert df['indicemartonne'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicemartonne']" + Style.RESET_ALL
+    
+    if set(['temperatura', 'precipitacion']).issubset(set(df.columns)):     
+        df['indicebirot'] = bio.indice_birot(precipitacion=np.array(df['precipitacion'].values),
+                                            temperatura=np.array(df['temperatura'].values),
+                                            muestras_dia=24)
+        variables_bioclimaticas.append('indicebirot')
+        assert df['indicebirot'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicebirot']" + Style.RESET_ALL
+        
+    if set(['temperatura']).issubset(set(df.columns)): 
+        df['indicehugling'] = bio.indice_hugling(temperatura=np.array(df['temperatura'].values),
+                                                muestras_dia=24)
+        variables_bioclimaticas.append('indicehugling')
+        assert df['indicehugling'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicehugling']" + Style.RESET_ALL
+        
+    print("\t\t[ " + Fore.GREEN + "OK" + Style.RESET_ALL + " ]")
+    
+    print(f"\tCalculando MACD", end='')
+    variables_macd = []
+    if set(['temperatura']).issubset(set(df.columns)):
+        df['tempmacd'], df['tempmacdsenal'] = macd(np.array(df['temperatura'].values))
+        variables_macd.append('tempmacd')
+        variables_macd.append('tempmacdsenal')
+        assert df['tempmacd'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['tempmacd']" + Style.RESET_ALL
+        assert df['tempmacdsenal'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['tempmacdsenal']" + Style.RESET_ALL
+        
+    if set(['hr']).issubset(set(df.columns)):
+        df['hrmacd'], df['hrmacdsenal'] = macd(np.array(df['hr'].values))
+        variables_macd.append('hrmacd')
+        variables_macd.append('hrmacdsenal')
+        assert df['hrmacd'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['hrmacd']" + Style.RESET_ALL
+        assert df['hrmacdsenal'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['hrmacdsenal']" + Style.RESET_ALL
+    
+    if set(['precipitacion']).issubset(set(df.columns)):
+        df['precipitacionmacd'], df['precipitacionmacdsenal'] = macd(np.array(df['precipitacion'].values))
+        variables_macd.append('precipitacionmacd')
+        variables_macd.append('precipitacionmacdsenal')
+        assert df['precipitacionmacd'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['precipitacionmacd']" + Style.RESET_ALL
+        assert df['precipitacionmacdsenal'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['precipitacionmacdsenal']" + Style.RESET_ALL
+    print("\t\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    
+
+    
+    
+    
+    
+    
+    
+    
+    #### AL FINAL 
+    print(f"\tAplicando escalado:", end='')
+    # escalar datos
+    for metrica in ['temperatura', 'hr', 'precipitacion']:
+        escalador = escaladores[metrica]
+        scaler = Escalador(Xmax=escalador['max'], 
+                                Xmin=escalador['min'],
+                                min=-1,
+                                max=1,
+                                auto_scale=False)
+        df[metrica] = scaler.transform(np.array(df[metrica].values))
+    for metrica in variables_bioclimaticas:
+        scaler = Escalador(min=-1,
+                                   max=1,
+                                   auto_scale=True)
+        df[metrica] = scaler.transform(np.array(df[metrica].values))
+    for metrica in variables_macd:
+        scaler = Escalador(min=-1,
+                                   max=1,
+                                   auto_scale=True)
+        df[metrica] = scaler.transform(np.array(df[metrica].values))                  
+        
+    
+    
+    print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    assert df.isna().sum().sum() == 0, Fore.RED + "Existen NANs!!!" + Style.RESET_ALL   
+        
+    
+    print("\t\t\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+    assert df.isna().sum().sum() == 0, Fore.RED + "Existen NANs!!!" + Style.RESET_ALL        
+
+    print(f"\tCalculando variables cíclicas de fecha", end='')
+    df['fecha'] = df.index
+    df['dia'] = df['fecha'].apply(lambda x: x.day * 2 * pi / 31)
+    df['dia_sin'] = np.sin(df['dia'])
+    df['dia_cos'] = np.cos(df['dia'])
+
+    df['diasemana'] = df['fecha'].apply(lambda x: x.isoweekday() * 2 * pi  / 7)
+    df['diasemana_sin'] = np.sin(df['diasemana'])
+    df['diasemana_cos'] = np.cos(df['diasemana'])
+
+    df['mes'] = df['fecha'].apply(lambda x: x.month * 2 * pi  / 12)
+    df['mes_sin'] = np.sin(df['mes'])
+    df['mes_cos'] = np.cos(df['mes'])
+
+    df.drop(columns=['dia', 'diasemana', 'mes'], inplace=True)
+    print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+
+    print(f"\tCalculando distancias y altitudes", end='')
+    df['distancia'] = haversine(lat1=estacion['latitud'],
+                                long1=estacion['longitud'],
+                                lat2=cdg[0],
+                                long2=cdg[1])
+    
+    df['altitud'] = estacion['altitud'] - cdg[2]
+    print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")
+
+    
 if __name__ == "__main__":
-    preprocesado()
+    cli()
 
 # %%

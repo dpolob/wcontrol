@@ -7,7 +7,7 @@ from pathlib import Path
 from functools import reduce
 from tqdm import tqdm
 
-#%%
+
 raw_path = Path('/home/diego/weather-control/data/raw/sql-raw/raw.csv')
 raw = pd.read_csv(raw_path, header=0, na_values='\0',sep=";")
 
@@ -37,6 +37,11 @@ for ubicacion in tqdm(ubicaciones, desc='Ubicaciones', leave=True):
 df_path = Path("/home/diego/weather-control/data/processed/25.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
 print(df.isna().sum())
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
+
+
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
@@ -46,6 +51,9 @@ plt.show()
 # Ubicaciion 28
 df_path = Path("/home/diego/weather-control/data/processed/28.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
@@ -56,6 +64,9 @@ plt.show()
 # Ubicaciion 35
 df_path = Path("/home/diego/weather-control/data/processed/35.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -67,6 +78,9 @@ plt.show()
 # Ubicaciion 102
 df_path = Path("/home/diego/weather-control/data/processed/102.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -74,23 +88,27 @@ ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
-print(df.tail())
-# temperatura: Outliers > 2021-08-15
-# temperatura: Missing: index<60000
-# precipitacion: Missing:  index>180.000
-print(df.iloc[:47000].isna().sum())
-fig, ax = plt.subplots(3,1,figsize=(15,15))
-ax[0].plot(df.iloc[:47000].loc[:,'temperatura'])
-ax[1].plot(df.iloc[:47000].loc[:,'hr'])
-ax[2].plot(df.iloc[:47000].loc[:,'precipitacion'])
+# print(df.tail())
+# # temperatura: Outliers > 2021-08-15
+# # temperatura: Missing: index<60000
+# # precipitacion: Missing:  index>180.000
+df=df.iloc[0:190000]
+df=df.loc[df['fecha'] > "2019-03-01",:]
 
-df = df.iloc[:47000]
+fig, ax = plt.subplots(3,1,figsize=(15,15))
+ax[0].plot(df['temperatura'])
+ax[1].plot(df['hr'])
+ax[2].plot(df['precipitacion'])
+print(df.tail())
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 
 # %%
 # Ubicaciion 1289
 df_path = Path("/home/diego/weather-control/data/processed/1289.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -102,6 +120,10 @@ plt.show()
 # Ubicaciion 2082
 df_path = Path("/home/diego/weather-control/data/processed/2082.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+#df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+#df.set_index('fecha', drop=False, inplace=True)
+
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -109,19 +131,24 @@ ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
+df = df.iloc[2000:]
 #outliers de temperatura -15.5 los elimino
-df.loc[df['temperatura'] == df['temperatura'].min(),:] = np.nan
+df.loc[df['temperatura'] == df['temperatura'].min(),['hr','precipitacion','temperatura']] = np.nan
 df.interpolate(inplace=True)
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
+print(df.isna().sum())
 plt.show()
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 2684
 df_path = Path("/home/diego/weather-control/data/processed/2684.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -133,6 +160,9 @@ plt.show()
 # Ubicaciion 2698
 df_path = Path("/home/diego/weather-control/data/processed/2698.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -144,6 +174,9 @@ plt.show()
 # Ubicaciion 2706
 df_path = Path("/home/diego/weather-control/data/processed/2706.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -151,20 +184,22 @@ ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
-# temperatura: Missing: 2020-04-07 18:15 a 2021-04-08 20:30
-# precipitacion: Missing:  index > 47000
-print(df.iloc[:47000].isna().sum())
-fig, ax = plt.subplots(3,1,figsize=(15,15))
-ax[0].plot(df.iloc[:47000].loc[:,'temperatura'])
-ax[1].plot(df.iloc[:47000].loc[:,'hr'])
-ax[2].plot(df.iloc[:47000].loc[:,'precipitacion'])
 
-df = df.iloc[:47000]
+df=df.loc[(df['fecha'] > "2020-02-27") , :]
+
+fig, ax = plt.subplots(3,1,figsize=(15,15))
+ax[0].plot(df.iloc[:].loc[:,'temperatura'])
+ax[1].plot(df.iloc[:].loc[:,'hr'])
+ax[2].plot(df.iloc[:].loc[:,'precipitacion'])
+
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 2922
 df_path = Path("/home/diego/weather-control/data/processed/2922.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -176,6 +211,9 @@ plt.show()
 # Ubicaciion 2966
 df_path = Path("/home/diego/weather-control/data/processed/2966.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -197,21 +235,34 @@ df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # Ubicaciion 3002
 df_path = Path("/home/diego/weather-control/data/processed/3002.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
+fig, ax = plt.subplots(3,1,figsize=(15,15))
+ax[0].plot(df['temperatura'])
+ax[1].plot(df['hr'])
+ax[2].plot(df['precipitacion'])
+plt.show()
+# # valores raros de temperatura
+# df.loc[df['temperatura'] == df['temperatura'].min(), ['hr','precipitacion','temperatura']] = np.nan
+# df.interpolate(inplace=True)
+df = df.loc[df['fecha']> "2021-05-01"]
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
-# valores raros de temperatura
-df.loc[df['temperatura'] == df['temperatura'].min(),:] = np.nan
-df.interpolate(inplace=True)
+
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 3003
 df_path = Path("/home/diego/weather-control/data/processed/3003.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
+
 print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
@@ -219,18 +270,34 @@ ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
-df.loc[df['temperatura'] == df['temperatura'].min(),:] = np.nan
-df.interpolate(inplace=True)
+df = df.loc[df['fecha']> "2021-05-06"]
+# df.loc[df['temperatura'] == df['temperatura'].min(),:] = np.nan
+# df.interpolate(inplace=True)
+fig, ax = plt.subplots(3,1,figsize=(15,15))
+ax[0].plot(df['temperatura'])
+ax[1].plot(df['hr'])
+ax[2].plot(df['precipitacion'])
+plt.show()
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 3005
 df_path = Path("/home/diego/weather-control/data/processed/3005.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
-print(df.isna().sum())
+df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
+df.set_index('fecha', drop=False, inplace=True)
 
+print(df.isna().sum())
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
+
+df = df.loc[df['fecha']>"2021-05-01", :]
+fig, ax = plt.subplots(3,1,figsize=(15,15))
+ax[0].plot(df['temperatura'])
+ax[1].plot(df['hr'])
+ax[2].plot(df['precipitacion'])
+plt.show()
+df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
