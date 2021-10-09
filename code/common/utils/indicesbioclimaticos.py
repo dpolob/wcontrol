@@ -204,4 +204,14 @@ def indice_hugling(temperatura: np.ndarray,  muestras_dia: int=1) -> np.ndarray:
     """
     T = maximaMovil(temperatura, 1 * muestras_dia)
     return 1.03 * ((temperatura -10 ) + (T -10)) / 2
+
+def integral_precipitacion(arr: np.ndarray=None, periodo: int=None, muestras_dia: int=1):
+    """[summary]
+
+    Args:
+        arr (nd.array, optional): [description]. Defaults to None.
+        periodo ([type], optional): [description]. Defaults to int=None.
+        muestras_dia (int, optional): [description]. Defaults to 1.
+    """
+    return (mediaMovil(arr=arr, periodo=periodo * muestras_dia))
 # %%

@@ -1,6 +1,6 @@
-experiment: "experimentoPmodel"
+experiment: "experimento7"
 descripcion: | 
-  12_72-72_Sum045055SQRT_model2_lr1e-2-1e-3
+  72-72_Sum045055SQRT_model2_lr1e-2-1e-3
   Mas lineas se pueden incluir
 prediccion: "temperatura"
 pasado: 72
@@ -8,15 +8,18 @@ futuro: 72
 paths:
   zmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_estaciones.pickle"
+    dataset_metadata: "/home/diego/weather-control/data/processed/dataset_estaciones.yaml"
     # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
-    runs: "/home/diego/weather-control/experiments/{{experiment}}/Zmodel/runs/"
-    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/Zmodel/modelchkpts/"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/Zmodel/outputs/"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
+    model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion.pickle"
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
+    #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
     # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
-    runs: "/home/diego/weather-control/experiments/{{experiment}}/Pmodel/runs/"
-    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/Pmodel/modelchkpts/"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/"
   
 preprocesado:
   outliers:
@@ -42,7 +45,7 @@ preprocesado:
     precipitacion:
       min: 0
       max: 30 
-Zmodel:    
+zmodel:    
   estaciones:
     - nombre: "Villar de Torre"
       id: 25
@@ -236,7 +239,7 @@ Zmodel:
       lr: 0.01
       hidden_size: 100
       dropout: 0.0
-      definidas:
+      features:
       - 'dia_sin'
       - 'dia_cos'
       - 'diasemana_sin'
@@ -246,16 +249,21 @@ Zmodel:
       - 'distancia'
       - 'altitud'
   dataloaders:
-      train:
-        enable: True
-        fecha_inicio: "2018-01-01 00:00:00"
-        fecha_fin: "2020-12-31 23:00:00"
-      validation:
-        enable: True
-        fecha_inicio: "2021-01-01 00:00:00"
-        fecha_fin: "2021-04-30 23:00:00"
+    train:
+      enable: True
+      fecha_inicio: "2018-01-01 00:00:00"
+      fecha_fin: "2020-12-31 23:00:00"
+    validation:
+      enable: True
+      fecha_inicio: "2021-01-01 00:00:00"
+      fecha_fin: "2021-04-30 23:00:00"
+    test:
+      enable: True
+      fecha_inicio: "2021-05-01 00:00:00"
+      fecha_fin: "2021-05-30 23:00:00"
+      use_checkpoint: 'best' 
 
-Pmodel:
+pmodel:
   estaciones:
     - nombre: "Villaverde"
       id: 2706
@@ -275,4 +283,9 @@ Pmodel:
     save_model: True
     plot_intermediate_results: True
     use_checkpoint_from_zmodel: 'best'
+  dataloaders:
+    train:
+      enable: True
+      fecha_inicio: "2020-03-02 00:00:00" # no puede ser el comienzo del archivo (2020-02-27) dejar al menos dejar pasados dias
+      fecha_fin: "2021-08-11 23:00:00" # no puede ser el final del archivo (2021-08-15) dejar al menso futuros dias
    

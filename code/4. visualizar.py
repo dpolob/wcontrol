@@ -7,7 +7,7 @@ import numpy as np
 with open('/home/diego/weather-control/data/outputs/experimento7_72-72_Sum0505_model2_lr1e-2-1e-3nosche/prediction.pickle', 'rb') as handler:
     predicciones = pickle.load(handler)
 
-MUESTRA = 15
+MUESTRA = 32
 for _ in predicciones.iloc[MUESTRA].loc['Y']:
     plt.plot(_, 'b')
 

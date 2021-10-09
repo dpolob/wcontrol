@@ -8,4 +8,4 @@ click
 pyyaml
 attrdict
 importlib
-
+sklearn

@@ -1,4 +1,5 @@
 #%%
+from numpy import AxisError
 import torch
 import torch.nn as nn
 
@@ -10,7 +11,8 @@ class LossFunction(nn.Module):
         Args:
             loss_fn (str, optional): 'mse' para MSELoss, 'maxL1' para Max(L1Loss),
                                   'L1' para L1Loss, 'sum' para sqrt(MSELoss) + L1Loss
-                                   'maxMSE' para Max(MSE).Defaults to 'mse'.
+                                  'mape' para MAPE, 'maxMSE' para Max(MSE).Defaults to 'mse'
+                                  'maxMAPE' para Max(MAPE)
             reduction (str, optional): 'mean' para valor medio, 'sum' para suma
             coefs (tuple, optional): Coeficiones para sum
         """
@@ -31,6 +33,8 @@ class LossFunction(nn.Module):
         elif self.loss_fn == 'sum':
             self.mse = nn.MSELoss(reduction=self.reduction)
             self.l1 = nn.L1Loss(reduction=self.reduction)
+        elif self.loss_fn == 'mape' or self.loss_fn == 'maxMAPE':
+            pass
         else:
             raise Exception("Loss function no definida")
         
@@ -39,12 +43,16 @@ class LossFunction(nn.Module):
         if self.loss_fn == 'mse':
             return self.mse(y_pred, y)
         if self.loss_fn == 'maxL1':
-            return torch.max(self.l1(y_pred, y))
+            return torch.max(torch.mean(self.l1(y_pred, y), axis=0))
         if self.loss_fn == 'L1':
             return self.l1(y_pred, y)
         if self.loss_fn == 'sum':
             return self.coefs[0] * self.l1(y_pred, y) + self.coefs[1] * torch.sqrt(self.mse(y_pred, y))
         if self.loss_fn == 'maxMSE':
-            return torch.max(self.mse(y_pred, y))
+            return torch.max(torch.mean(self.mse(y_pred, y), axis=0))
+        if self.loss_fn == 'mape':
+            return torch.mean(torch.abs((y - y_pred) / (y + 1e-7)))
+        if self.loss_fn == 'maxMAPE':
+            return torch.max(torch.mean(torch.abs((y - y_pred) / (y + 1e-7)), axis=0))
  
 # %%

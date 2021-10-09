@@ -185,7 +185,7 @@ ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
 
-df=df.loc[(df['fecha'] > "2020-02-27") , :]
+df=df.loc[(df['fecha'] > "2020-02-27") & (df['fecha'] <= "2021-08-11") , :]
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df.iloc[:].loc[:,'temperatura'])

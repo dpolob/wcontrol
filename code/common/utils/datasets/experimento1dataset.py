@@ -1,5 +1,5 @@
 #%%
-# # Dataloader y Sampler
+
 
 import numpy as np
 import pandas as pd
@@ -51,7 +51,7 @@ class Seq2SeqDataset(Dataset):
         self.etiquetaX = etiquetaX
         assert isinstance(etiquetaF, list), "etiquetaF no es list"
         self.etiquetaF = etiquetaF
-        assert isinstance(etiquetaT, list), "etiquetaF no es list"
+        assert isinstance(etiquetaT, list), "etiquetaT no es list"
         self.etiquetaT = etiquetaT
         self.longitud = max([_.index.max() for _ in datasets]) - min([_.index.min() for _ in datasets]) + 1
 

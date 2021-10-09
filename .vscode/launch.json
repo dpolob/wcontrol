@@ -5,15 +5,17 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            // "args": [
-            //     "--file", "/home/diego/weather-control/experiments/p.yml"
-            // ]
+            "args": [
+                "zmodel", 
+                "--file", "/home/diego/weather-control/experiments/experimentoA2/pmodel.yml"
+            ]
              
         }
     ]

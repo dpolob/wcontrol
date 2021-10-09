@@ -25,8 +25,8 @@ class TorchTrainer():
         self.loss_fn = loss_fn
         self.device = device
         self.name = name
-        self.checkpoint_path = kwargs.get('checkpoint_folder')
-        self.runs_path = kwargs.get('runs_folder')
+        self.checkpoint_path = kwargs.get('checkpoint_folder', None)
+        self.runs_path = kwargs.get('runs_folder', None)
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 50)
         self.writer = SummaryWriter(self.runs_path)
@@ -35,14 +35,15 @@ class TorchTrainer():
         self.additional_metric_fns = kwargs.get('additional_metric_fns', {})
         self.additional_metric_fns = self.additional_metric_fns.items()
         self.pass_y = kwargs.get('pass_y', False)
-        self.valid_losses = {}
         self.save_model = kwargs.get('save_model', False)
+        self.save_model_path = kwargs.get('save_model_path', None)
         
         if self.save_model:
-            torch.save(self.model, pathlib.Path(self.checkpoint_path) / "model.pth")
+            torch.save(self.model, pathlib.Path(self.save_model_path))
+            
         if (self.checkpoint_path/'valid_losses.pickle').is_file():
             self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb'))
-            print('valid_losses file found!')
+            tqdm.write('valid_losses file found!')
         else:
             self.valid_losses = {}
         
@@ -62,7 +63,7 @@ class TorchTrainer():
             checkpoints = sorted(checkpoints, key=lambda x: x[1], reverse=True)
             for delete_cp in checkpoints[self.max_checkpoints:]:
                 delete_cp[0].unlink()
-                print(f'removed checkpoint of epoch - {delete_cp[1]}')
+                tqdm.write(f'removed checkpoint of epoch - {delete_cp[1]}')
 
     def _save_checkpoint(self, epoch, valid_loss=None):
         self._clean_outdated_checkpoints()
@@ -79,7 +80,7 @@ class TorchTrainer():
             checkpoint.update({'loss': valid_loss})
         torch.save(checkpoint, self.checkpoint_path/f'checkpoint_{epoch}')
         save_dict(self.checkpoint_path / 'valid_losses.pickle', self.valid_losses)
-        print(f'saved checkpoint for epoch {epoch}')
+        tqdm.write(f'saved checkpoint for epoch {epoch}')
         self._clean_outdated_checkpoints()
 
     def _load_checkpoint(self, epoch=None, only_model=False, name=None):
@@ -106,14 +107,17 @@ class TorchTrainer():
                             self.scheduler[i].load_state_dict(checkpoint['scheduler_state_dict'][i])
                     else:
                         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-            print(f'loaded checkpoint for epoch - {checkpoint["epoch"]}')
+            tqdm.write(f'loaded checkpoint for epoch - {checkpoint["epoch"]}')
             return checkpoint['epoch']
         return None
 
     def _load_best_checkpoint(self):
-        if self.valid_losses:
+        if (self.checkpoint_path/'valid_losses.pickle').is_file():
             best_epoch = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
             loaded_epoch = self._load_checkpoint(epoch=best_epoch, only_model=True)
+        else:
+            tqdm.write(f"No se ha encontrado el archivo valid_losses")
+            exit()
 
     def _step_optim(self):
         if type(self.optimizer) is list:
@@ -214,9 +218,9 @@ class TorchTrainer():
                 y = y.to(self.device)
 
                 y_pred = self.model(xt, x, yt, y)
-                #print(y_pred.shape)
+                #tqdm.write(y_pred.shape)
                 predictions.append(y_pred.cpu().numpy())
-        #print(predictions)
+        #tqdm.write(predictions)
         return predictions
 
     # pass single batch input, without batch axis
@@ -279,22 +283,22 @@ class TorchTrainer():
                     # additional_running_loss = [0 for _ in self.additional_metric_fns]
                 if plot and it % 10000 == 9999:
                     fig =plt.figure(figsize=(26,12))
-                    plt.plot(torch.mean(X, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
+                    plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
                     plt.plot(torch.mean(y_pred, dim=0).cpu().detach().numpy().reshape(-1,1), 'r')
                     self.writer.add_figure('data/test/resultados', fig, i * len(train_dataloader) + it)
-                    #print("Plot en{}".format(i * len(train_dataloader) + it))
+                    #tqdm.write("Plot en{}".format(i * len(train_dataloader) + it))
 
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()
-            print(f'Training loss at epoch {i + 1} - {np.mean(training_losses)}')
+            tqdm.write(f'Training loss at epoch {i + 1} - {np.mean(training_losses)}')
             if valid_dataloader is not None:
                 valid_loss, additional_metrics = self.evaluate(valid_dataloader)
                 self.writer.add_scalar('validation loss', valid_loss, i)
                 if additional_metrics is not None:
-                    print(additional_metrics)
-                print(f'Valid loss at epoch {i + 1}- {valid_loss}')
+                    tqdm.write(additional_metrics)
+                tqdm.write(f'Valid loss at epoch {i + 1}- {valid_loss}')
                 self.valid_losses[i+1] = valid_loss
-                print(self.valid_losses[i+1])
+                tqdm.write(f"{self.valid_losses[i+1]}")
             if self.scheduler is not None and not self.scheduler_batch_step:
                 self._step_scheduler(valid_loss)
             if (i + 1) % self.train_checkpoint_interval == 0:
