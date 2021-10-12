@@ -1,5 +1,15 @@
-experiments/
+# todo experiments
+experiments/*
+#conservar .yml
+!experiments/experimento*
+experiments/experimento*/*
+!experiments/experimento*/*.yml
+
+!docs/
+
 data/
+*.pickle
+*.pickle_
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode

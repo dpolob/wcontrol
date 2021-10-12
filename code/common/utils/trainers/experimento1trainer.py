@@ -38,6 +38,8 @@ class TorchTrainer():
         self.save_model = kwargs.get('save_model', False)
         self.save_model_path = kwargs.get('save_model_path', None)
         
+        self.early_stop = kwargs.get('early_stop', None)
+                
         if self.save_model:
             torch.save(self.model, pathlib.Path(self.save_model_path))
             
@@ -46,7 +48,19 @@ class TorchTrainer():
             tqdm.write('valid_losses file found!')
         else:
             self.valid_losses = {}
+    
+    def _early_stopping(self) -> bool:
+        """ Devuelve True si se cumplen las condiciones de early stopping
+        ultimo epoch - mejor_epoch > valor definido en self.early_stop"""
         
+        if isinstance(self.early_stop, int):
+            if len(self.valid_losses) > self.early_stop:
+                best_epoch_index = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
+                last_epoch_index = sorted(self.valid_losses.items(), key=lambda x:x[1])[-1][0]
+                if (last_epoch_index - best_epoch_index) > self.early_stop:
+                    return True
+        return False
+            
     def _get_checkpoints(self, name=None):
         checkpoints = []
         #checkpoint_path = self.checkpoint_path if name is not None else pathlib.Path(f'./experiments/modelchkpts/{name}_chkpts')
@@ -303,3 +317,7 @@ class TorchTrainer():
                 self._step_scheduler(valid_loss)
             if (i + 1) % self.train_checkpoint_interval == 0:
                 self._save_checkpoint(i+1)
+            if valid_dataloader is not None and self.early_stop is not None and self._early_stopping():
+                tqdm.write("Se ha alcanzado la condicion de early stopping!!!!")
+                break
+            

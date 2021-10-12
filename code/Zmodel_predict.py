@@ -20,7 +20,7 @@ from common.utils.datasets import experimento1dataset as ds
 from common.utils.datasets import experimento1sampler as sa
 from common.utils.trainers import experimento1trainer as tr
 from common.utils.loss_functions import lossfunction as lf
-from common.data_preprocessing.modules import parser_experiment
+import common.data_preprocessing.modules as parser
 
 
 import torch.multiprocessing
@@ -150,7 +150,7 @@ def predictZModel(file):
     except:
         print(f"{file} no existe. Por favor defina un archivo con --file")
     name = cfg["experiment"]
-    cfg = AttrDict(parser_experiment(cfg, name)) # parser de {{experiment}}
+    cfg = AttrDict(parser.parser_experiment(cfg, name)) # parser de {{experiment}}
 
     try:
         with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:

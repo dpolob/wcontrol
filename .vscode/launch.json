@@ -13,8 +13,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "zmodel", 
-                "--file", "/home/diego/weather-control/experiments/experimentoA2/pmodel.yml"
+                "pmodel", 
+                "--file", "/home/diego/weather-control/experiments/experimentoA4/pmodel.yml"
             ]
              
         }
