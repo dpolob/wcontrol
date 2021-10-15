@@ -8,33 +8,7 @@
 # corregir maxMSE y maxL1 porque no solo sacaban en máximo entre todas las series. Ahora se hace media
 # MAX(MEAN(error(reduction=none)))
 
+Eliminar estacion de Arenzana que esta repetida!!!!!!!!!!!!!
+
+
 Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
-
-VER LO DE MUTUAL INFO (Que no sera derivable)
-I encountered the same issue today. After a few trials I found the real reason: you take log2 if you strictly followed NLP tutorial, but sklearn.metrics.mutual_info_score uses natural logarithm(base e, Euler's number). I didn't find this detail in sklearn documentation...
-
-I verified this by:
-
-import numpy as np
-def computeMI(x, y):
-    sum_mi = 0.0
-    x_value_list = np.unique(x)
-    y_value_list = np.unique(y)
-    Px = np.array([ len(x[x==xval])/float(len(x)) for xval in x_value_list ]) #P(x)
-    Py = np.array([ len(y[y==yval])/float(len(y)) for yval in y_value_list ]) #P(y)
-    for i in xrange(len(x_value_list)):
-        if Px[i] ==0.:
-            continue
-        sy = y[x == x_value_list[i]]
-        if len(sy)== 0:
-            continue
-        pxy = np.array([len(sy[sy==yval])/float(len(y))  for yval in y_value_list]) #p(x,y)
-        t = pxy[Py>0.]/Py[Py>0.] /Px[i] # log(P(x,y)/( P(x)*P(y))
-        sum_mi += sum(pxy[t>0]*np.log2( t[t>0]) ) # sum ( P(x,y)* log(P(x,y)/( P(x)*P(y)) )
-    return sum_mi
-
-If you change this np.log2 to np.log, I think it would give you the same answer as sklearn. The only difference is that when this method returns 0, sklearn will return a number very near to 0. ( And of course, use sklearn if you don't care about log base, my piece of code is just for demo, it gives poor performance...)
-
-FYI, 1)sklearn.metrics.mutual_info_score takes lists as well as np.array; 2) the sklearn.metrics.cluster.entropy uses also log, not log2
-
-Edit: as for "same result", I'm not sure what you really mean. In general, the values in the vectors don't really matter, it is the 
