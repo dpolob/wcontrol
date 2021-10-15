@@ -198,7 +198,7 @@ zmodel:
     epochs: 30
     use_cuda: True
     save_model: True
-    plot_intermediate_results: False
+    plot_intermediate_results: True
     early_stop: 5
     teacher_forcing: 0.2
     duplicate_teaching: 400

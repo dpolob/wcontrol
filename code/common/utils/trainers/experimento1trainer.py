@@ -312,7 +312,7 @@ class TorchTrainer():
                     tqdm.write(additional_metrics)
                 tqdm.write(f'Valid loss at epoch {i + 1}- {valid_loss}')
                 self.valid_losses[i+1] = valid_loss
-                tqdm.write(f"{self.valid_losses[i+1]}")
+                #tqdm.write(f"{self.valid_losses[i+1]}")
             if self.scheduler is not None and not self.scheduler_batch_step:
                 self._step_scheduler(valid_loss)
             if (i + 1) % self.train_checkpoint_interval == 0:
