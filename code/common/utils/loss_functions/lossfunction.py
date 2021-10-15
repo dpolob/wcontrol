@@ -21,7 +21,7 @@ class LossFunction(nn.Module):
         self.loss_fn = kwargs.get('loss_fn', 'mse')
         self.reduction = kwargs.get('reduction', 'mean')
         self.coefs = kwargs.get(tuple('coefs'), (0.5, 0.5))
-        
+                
         if self.loss_fn == 'mse':
             self.mse = nn.MSELoss(reduction=self.reduction)
         elif self.loss_fn == 'L1':
@@ -33,7 +33,7 @@ class LossFunction(nn.Module):
         elif self.loss_fn == 'sum':
             self.mse = nn.MSELoss(reduction=self.reduction)
             self.l1 = nn.L1Loss(reduction=self.reduction)
-        elif self.loss_fn == 'mape' or self.loss_fn == 'maxMAPE':
+        elif self.loss_fn == 'mape' or self.loss_fn == 'maxMAPE' or self.loss_fn == 'tweedie':
             pass
         else:
             raise Exception("Loss function no definida")
@@ -54,5 +54,6 @@ class LossFunction(nn.Module):
             return torch.mean(torch.abs((y - y_pred) / (y + 1e-7)))
         if self.loss_fn == 'maxMAPE':
             return torch.max(torch.mean(torch.abs((y - y_pred) / (y + 1e-7)), axis=0))
+
  
 # %%

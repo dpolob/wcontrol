@@ -20,14 +20,13 @@ from common.utils.datasets import experimento1dataset as ds
 from common.utils.datasets import experimento1sampler as sa
 from common.utils.trainers import experimento1trainer as tr
 from common.utils.loss_functions import lossfunction as lf
-import common.data_preprocessing.modules as parser
 
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
-def predictor(**kwargs):
+def predict(**kwargs):
 
     datasets = kwargs.get('datasets', None)
     fecha_inicio_test = kwargs.get('fecha_inicio_test', None)
@@ -138,98 +137,3 @@ def predictor(**kwargs):
         trainer._load_checkpoint(epoch=use_checkpoint, only_model=True)
     y_pred = trainer.predict(test_dataloader)  # y_pred (len(test), N, L, F(d)out) (4000,1,72,1)
     return y_pred, test_dataloader
-                                           
-@click.command()
-@click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
-def predictZModel(file):
-
-    try:
-        with open(file, 'r') as handler:
-            cfg = yaml.safe_load(handler)
-        print(f"Usando {file} como archivo de configuracion")
-    except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
-    name = cfg["experiment"]
-    cfg = AttrDict(parser.parser_experiment(cfg, name)) # parser de {{experiment}}
-
-    try:
-        with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
-            datasets = pickle.load(handler)
-        print(f"Usando {cfg.paths.zmodel.dataset} como archivo de datos procesados de estaciones")
-    except:
-        print(Fore.RED + "Por favor defina un archivo de datos procesados")
-        exit()
-    
-    PASADO = cfg.pasado
-    FUTURO = cfg.futuro
-    PREDICCION = cfg.prediccion
-    device = 'cuda' if cfg.zmodel.model.use_cuda else 'cpu'        
-    FECHA_INICIO_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_inicio, "%Y-%m-%d %H:%M:%S")
-    FECHA_FIN_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_fin, "%Y-%m-%d %H:%M:%S")
-    FEATURES = list(cfg.zmodel.model.encoder.features)
-    DEFINIDAS = list(cfg.zmodel.model.decoder.features)
-    EPOCHS = cfg.zmodel.model.epochs
-
-    if not cfg.zmodel.dataloaders.test.enable:
-        print("El archivo no tiene definido dataset para test")
-        exit()
-    
-    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
-        metadata = yaml.safe_load(handler)
-    print("Leidos metadatos del dataset")
-    fecha_inicio = datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S")
-    indice_min = metadata['indice_min']
-    indice_max = metadata['indice_max']
-    print(f"Inicio del dataset en {metadata['fecha_min']}")
-    
-    kwargs = {'datasets': datasets,
-      'fecha_inicio_test': FECHA_INICIO_TEST,
-      'fecha_fin_test': FECHA_FIN_TEST,
-      'fecha_inicio': fecha_inicio,
-      'pasado': PASADO,
-      'futuro': FUTURO,
-      'etiquetaX': PREDICCION,
-      'etiquetaF': FEATURES,
-      'etiquetaT': DEFINIDAS,
-      'name': name,
-      'model_name': cfg.zmodel.model.name,
-      'rnn_num_layers': cfg.zmodel.model.encoder.rnn_num_layers,
-      'encoder_hidden_size': cfg.zmodel.model.encoder.hidden_size,
-      'encoder_bidirectional' : cfg.zmodel.model.encoder.bidirectional,
-      'device': device,
-      'encoder_rnn_dropout': cfg.zmodel.model.encoder.rnn_dropout,
-      'decoder_hidden_size': cfg.zmodel.model.decoder.hidden_size,
-      'decoder_dropout': cfg.zmodel.model.decoder.dropout,
-      'model_scheduler': cfg.zmodel.model.scheduler,
-      'path_checkpoints': cfg.paths.zmodel.checkpoints,
-      'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
-      'epochs': EPOCHS,
-      'path_model' : cfg.paths.zmodel.model,
-      'indice_max': indice_max,
-      'indice_min': indice_min
-    }
-    
-   
-    y_pred, test_dataloader = predictor(**kwargs)
- 
-    print("y_pred:", len(y_pred))
-    predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)),
-                                 'Ypred': np.zeros(len(y_pred))}).astype('object')
-    #print(predicciones)
-    import copy
-    for it, (_, _, _, y) in enumerate(tqdm((test_dataloader))):
-        y_cp = copy.deepcopy(y)
-        del y
-        predicciones.iloc[it].loc['Y'] = list(np.squeeze(y_cp[:, 1:, :].numpy()))
-        predicciones.iloc[it].loc['Ypred'] = list(np.squeeze(y_pred[it]))
-    print(len(predicciones))
-    
-    output = Path(cfg.paths.zmodel.predictions)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Usando {output} como ruta para guardar predicciones")
-    with open(output, 'wb') as handler:
-        pickle.dump(predicciones, handler)
-    print(f"Salvando archivo de predicciones en {output}")
-
-if __name__ == "__main__":
-    predictZModel()

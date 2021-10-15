@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from common.data_preprocessing.modules import parser_experiment
+import common.utils.parser as parser
 from common.utils.datasets import experimento1dataset as ds
 from common.utils.datasets import experimento1sampler as sa
 from common.utils.trainers import experimento1trainer as tr
@@ -38,7 +38,7 @@ def zmodel(file):
         exit()
     
     name = cfg["experiment"]
-    cfg = AttrDict(parser_experiment(cfg, name))
+    cfg = AttrDict(parser.parser_experiment(cfg, name))
     
     with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
         datasets = pickle.load(handler)
@@ -99,6 +99,11 @@ def zmodel(file):
         print(f"Generando dataset de validation desde {x} a {y}")
         dfs_valid = [df.loc[(df.index >= x ) & (df.index <= y), :] for df in datasets]
    
+    if 'shuffle' not in cfg.zmodel.dataloaders.train.keys():
+        shuffle = True
+    else:
+        shuffle = cfg.zmodel.dataloaders.train.shuffle
+        
     if TRAIN:
         train_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_train,
                                                                 pasado=PASADO,
@@ -109,10 +114,14 @@ def zmodel(file):
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_train,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
-                                                                shuffle=True),
+                                                                shuffle=shuffle),
     
                                       batch_size=None,
                                       num_workers=8)
+    if 'shuffle' not in cfg.zmodel.dataloaders.validation.keys():
+        shuffle = True
+    else:
+        shuffle = cfg.zmodel.dataloaders.validation.shuffle
     if VALIDATION:
         valid_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_valid,
                                                                 pasado=PASADO,
@@ -123,7 +132,7 @@ def zmodel(file):
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_valid,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
-                                                                shuffle=False),
+                                                                shuffle=shuffle),
     
                                       batch_size=None,
                                       num_workers=8)
@@ -189,7 +198,8 @@ def zmodel(file):
                               runs_folder= runs_path,
                               #additional_metric_fns={"L1_mean_loss": lf.LossFunction(loss='L1', reduction='mean')}
                               save_model=cfg.zmodel.model.save_model,
-                              save_model_path=cfg.paths.zmodel.model
+                              save_model_path=cfg.paths.zmodel.model,
+                              early_stop=cfg.zmodel.model.early_stop
                               )
 
     #trainer.lr_find(train_dataloader, model_optimizer, start_lr=1e-5, end_lr=1e-2, num_iter=500)

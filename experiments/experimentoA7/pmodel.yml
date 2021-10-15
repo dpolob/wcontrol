@@ -1,7 +1,7 @@
-experiment: "experimentoA1"
+experiment: "experimentoA7"
 descripcion: | 
-  72-72_Sum045055SQRT_model2_lr1e-2-1e-3
-  Mas lineas se pueden incluir
+  1440-72_Sum045055SQRT_model2_lr1e-2-1e-3 desde A1 epoch 9
+  1440-72 Sum045055SQRT_model2_lr1e-2-1e-3 sin teacher_forcing o muy bajo
 prediccion: "temperatura"
 pasado: 1440
 futuro: 72
@@ -92,17 +92,17 @@ zmodel:
       longitud: -2.7540781
       latitud: 42.3424721
       altitud: 566
-    # - nombre: "Nájera"
-    #   id: 1289
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/1289.csv"
-    #   longitud: -2.7266667
-    #   latitud: 42.4141667
-    #   altitud: 500
+    - nombre: "Nájera"
+      id: 1289
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/1289.csv"
+      longitud: -2.7266667
+      latitud: 42.4141667
+      altitud: 500
     - nombre: "Arenzana de Abajo"
       id: 2082
       format: "%Y-%m-%d %H:%M:%S"
@@ -198,8 +198,8 @@ zmodel:
     save_model: True
     plot_intermediate_results: False
     early_stop: 5
-    teacher_forcing: 0.2
-    duplicate_teaching: 40
+    teacher_forcing: 0.1
+    duplicate_teaching: 400
     loss_function:
       loss_fn: 'sum'
       reduction: 'mean'
@@ -264,7 +264,7 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 11
+      use_checkpoint: 'best' 
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range

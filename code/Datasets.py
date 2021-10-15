@@ -6,7 +6,7 @@ from pathlib import Path
 from attrdict import AttrDict
 from colorama import Fore, Back, Style
 
-import common.data_preprocessing.modules as parser
+import common.utils.parser as parser
 from common.data_preprocessing.modules import haversine, distanciasCdG
 from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 
@@ -34,10 +34,13 @@ def zmodel(file):
     dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.zmodel.estaciones), 
                                            escaladores = cfg.preprocesado.escaladores, 
                                            outliers = cfg.preprocesado.outliers)
+    output = Path(cfg.paths.zmodel.dataset)
+    output.parent.mkdir(parents=True, exist_ok=True)
     print(f"Guardando salida en {cfg.paths.zmodel.dataset}", end='')
-    with open(cfg.paths.zmodel.dataset, 'wb') as handler:
+    with open(output, 'wb') as handler:
         pickle.dump(dfs, handler)
-    print("\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]")                             
+    print(OK)         
+    print(f"Guardando metadatos en {cfg.paths.zmodel.dataset_metadatos}", end='')                    
     with open(Path(cfg.paths.zmodel.dataset_metadata), 'w') as handler:
         yaml.safe_dump(metadata, handler, allow_unicode=True)
     print(OK)
@@ -54,9 +57,8 @@ def pmodel(file):
         exit()
     name = cfg["experiment"]
     cfg = AttrDict(parser.parser_experiment(cfg, name))
-    
-    # output = Path(cfg.paths.pmodel.dataset)
-    # output.parent.mkdir(parents=True, exist_ok=True)
+    output = Path(cfg.paths.pmodel.dataset)
+    output.parent.mkdir(parents=True, exist_ok=True)
 
     estacion = list(cfg.pmodel.estaciones)[0]
     escaladores = cfg.preprocesado.escaladores
@@ -66,13 +68,11 @@ def pmodel(file):
                                 estaciones=cfg.zmodel.estaciones, escaladores=cfg.preprocesado.escaladores,
                                 outliers= cfg.preprocesado.outliers, cfg=cfg)
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
-    with open(cfg.paths.pmodel.dataset, 'wb') as handler:
+    
+    with open(output, 'wb') as handler:
         pickle.dump(df, handler)
     print(OK)
 
     
 if __name__ == "__main__":
     cli()
-
-
-# %%

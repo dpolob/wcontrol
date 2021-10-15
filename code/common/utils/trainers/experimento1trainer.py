@@ -45,7 +45,7 @@ class TorchTrainer():
             
         if (self.checkpoint_path/'valid_losses.pickle').is_file():
             self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb'))
-            tqdm.write('valid_losses file found!')
+            #tqdm.write('valid_losses file found!')
         else:
             self.valid_losses = {}
     

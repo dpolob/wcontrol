@@ -8,6 +8,8 @@
 # corregir maxMSE y maxL1 porque no solo sacaban en máximo entre todas las series. Ahora se hace media
 # MAX(MEAN(error(reduction=none)))
 
+Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
+
 VER LO DE MUTUAL INFO (Que no sera derivable)
 I encountered the same issue today. After a few trials I found the real reason: you take log2 if you strictly followed NLP tutorial, but sklearn.metrics.mutual_info_score uses natural logarithm(base e, Euler's number). I didn't find this detail in sklearn documentation...
 

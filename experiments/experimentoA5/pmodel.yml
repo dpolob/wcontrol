@@ -1,9 +1,10 @@
-experiment: "experimentoA1"
+experiment: "experimentoA5"
 descripcion: | 
-  72-72_Sum045055SQRT_model2_lr1e-2-1e-3
-  Mas lineas se pueden incluir
+  360-72 con maxSME desde A3
+  teacher forcing disminuido, shuffle true
+  
 prediccion: "temperatura"
-pasado: 1440
+pasado: 360
 futuro: 72
 paths:
   zmodel:
@@ -13,10 +14,12 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion.pickle"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion_test.pickle"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
+    
     #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
     # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
     runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/"
@@ -92,17 +95,17 @@ zmodel:
       longitud: -2.7540781
       latitud: 42.3424721
       altitud: 566
-    # - nombre: "Nájera"
-    #   id: 1289
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/1289.csv"
-    #   longitud: -2.7266667
-    #   latitud: 42.4141667
-    #   altitud: 500
+    - nombre: "Nájera"
+      id: 1289
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/1289.csv"
+      longitud: -2.7266667
+      latitud: 42.4141667
+      altitud: 500
     - nombre: "Arenzana de Abajo"
       id: 2082
       format: "%Y-%m-%d %H:%M:%S"
@@ -193,20 +196,20 @@ zmodel:
       altitud: 600
   model:
     name: "seq2seq_2layers"
-    epochs: 40
+    epochs: 20
     use_cuda: True
     save_model: True
     plot_intermediate_results: False
     early_stop: 5
-    teacher_forcing: 0.2
-    duplicate_teaching: 40
+    teacher_forcing: 0.1
+    duplicate_teaching: 500  # mayor de FUTURO equivale a no ponerlo
     loss_function:
-      loss_fn: 'sum'
-      reduction: 'mean'
-      coefs: (0.45, 0.55)
+      loss_fn: "maxMSE"
+      reduction: 'none'
+      coefs: (0.5, 0.5)
     scheduler: True
     encoder:
-      lr: 0.01
+      lr: 0.02
       rnn_num_layers: 1
       hidden_size: 100
       bidirectional: False
@@ -239,7 +242,7 @@ zmodel:
       - 'distancia'
       - 'altitud'
     decoder:
-      lr: 0.01
+      lr: 0.02
       hidden_size: 100
       dropout: 0.0
       features:
@@ -264,14 +267,14 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 11
+      use_checkpoint: 'best' 
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range
       inicio: 0
       fin: "end"
       paso: 50
-
+      
 pmodel:
   estaciones:
     - nombre: "Villaverde"

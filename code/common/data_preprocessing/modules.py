@@ -27,7 +27,8 @@ from datetime import datetime
 from sklearn.impute import KNNImputer
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
-from Zmodel_predict import predictor
+import common.predict.modules as predictor
+import common.utils.parser as parser
 
 from datetime import datetime, timedelta
 import common.utils.indicesbioclimaticos as bio
@@ -78,23 +79,6 @@ def haversine(lat1: float, long1: float, lat2: float, long2: float) -> float:
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     km = 6367 * c
     return abs(km)
-
-def parser_experiment(cfg: dict, name: str) -> dict:
-    """Parsea la cadena {{experiment}} de los archivos de configuracion yml
-
-    Args:
-        cfg (dict): diccionario
-        name (str): reemplazo
-
-    Returns:
-        dict: diccionario parseado
-    """
-    for key in cfg.keys():
-        if isinstance(cfg[key], dict):
-            cfg[key] = parser_experiment(cfg[key], name)
-        if isinstance(cfg[key], str):
-            cfg[key] = cfg[key].replace("{{experiment}}", name)
-    return cfg
 
 def cyclic(column_date: pd.DataFrame) -> tuple:
     """Generador de variables de fecha ciclicas
@@ -501,7 +485,7 @@ def generarvariablesPmodel(estacion:list=None, estaciones: list=None, escaladore
               'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint, 'epochs': cfg.zmodel.model.epochs, 'path_model' : cfg.paths.zmodel.model,
               'indice_min' : metadata['indice_min'], 'indice_max' : metadata['indice_max']
               }
-    y_pred, _ = predictor(**kwargs)
+    y_pred, _ = predictor.predict(**kwargs)
     #y_pred = pickle.load(open('/home/diego/weather-control/data/processed/precalculadas_nivel_zona.pickle', 'rb'))
     y_pred = np.array([_.mean(axis=0) for _ in y_pred])
     y_pred = y_pred.squeeze()
@@ -542,7 +526,7 @@ def generarvariablesPmodel(estacion:list=None, estaciones: list=None, escaladore
               'epochs': cfg.zmodel.model.epochs, 'path_model' : cfg.paths.zmodel.model,
               'indice_min' : metadata_estacion['indice_min'], 'indice_max' : metadata_estacion['indice_max']
               }
-    y_pred, _ = predictor(**kwargs)
+    y_pred, _ = predictor.predict(**kwargs)
     #y_pred = pickle.load(open('/home/diego/weather-control/data/processed/precalculadas_nivel_parcela.pickle', 'rb'))
     y_pred = np.array([_.squeeze() for _ in y_pred])
     y_pred = pd.DataFrame(y_pred)

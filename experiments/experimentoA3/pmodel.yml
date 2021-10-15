@@ -13,7 +13,9 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion.pickle"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
     
@@ -197,6 +199,7 @@ zmodel:
     use_cuda: True
     save_model: True
     plot_intermediate_results: False
+    early_stop: 5
     teacher_forcing: 0.2
     duplicate_teaching: 40
     loss_function:
@@ -264,7 +267,13 @@ zmodel:
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
       use_checkpoint: 'best' 
-
+  resultados:
+    visualizacion:
+      muestras: "range" # random, all, list, range
+      inicio: 0
+      fin: "end"
+      paso: 50
+      
 pmodel:
   estaciones:
     - nombre: "Villaverde"
