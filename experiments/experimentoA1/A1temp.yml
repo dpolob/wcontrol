@@ -1,7 +1,7 @@
 experiment: "experimentoA1"
 descripcion: | 
-  72-72_Sum045055SQRT_model2_lr1e-2-1e-3
-  Mas lineas se pueden incluir
+  1440-72_Sum045055SQRT_model2_lr1e-2-1e-3 con teacher_forcing, shuffle True
+  1440-72_Sum045055SQRT_model2_lr0.01 0.02 sin teacher_forcing shuffle False
 prediccion: "temperatura"
 pasado: 1440
 futuro: 72
@@ -13,8 +13,9 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion.pickle"
-    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
+    
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
     #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
@@ -199,7 +200,7 @@ zmodel:
     plot_intermediate_results: False
     early_stop: 5
     teacher_forcing: 0.2
-    duplicate_teaching: 40
+    duplicate_teaching: 400
     loss_function:
       loss_fn: 'sum'
       reduction: 'mean'
@@ -239,7 +240,7 @@ zmodel:
       - 'distancia'
       - 'altitud'
     decoder:
-      lr: 0.01
+      lr: 0.02
       hidden_size: 100
       dropout: 0.0
       features:
@@ -256,15 +257,17 @@ zmodel:
       enable: True
       fecha_inicio: "2018-01-01 00:00:00"
       fecha_fin: "2020-12-31 23:00:00"
+      shuffle: False
     validation:
       enable: True
       fecha_inicio: "2021-01-01 00:00:00"
       fecha_fin: "2021-04-30 23:00:00"
+      shuffle: False
     test:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 11
+      use_checkpoint: 10
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range

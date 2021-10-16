@@ -43,16 +43,16 @@ class LossFunction(nn.Module):
         if self.loss_fn == 'mse':
             return self.mse(y_pred, y)
         if self.loss_fn == 'maxL1':
-            return torch.max(torch.mean(self.l1(y_pred, y), axis=0))[0]
+            return torch.max(torch.mean(self.l1(y_pred, y), axis=0))
         if self.loss_fn == 'L1':
             return self.l1(y_pred, y)
         if self.loss_fn == 'sum':
             return self.coefs[0] * self.l1(y_pred, y) + self.coefs[1] * torch.sqrt(self.mse(y_pred, y))
         if self.loss_fn == 'maxMSE':
-            return torch.max(torch.mean(self.mse(y_pred, y), axis=0))[0]
+            return torch.max(torch.mean(self.mse(y_pred, y), axis=0))
         if self.loss_fn == 'mape':
             return torch.mean(torch.abs((y - y_pred) / (y + 1e-7)))
         if self.loss_fn == 'maxMAPE':
-            return torch.max(torch.mean(torch.abs((y - y_pred) / torch.clamp(y, min=1e-7)), axis=0))[0]
+            return torch.max(torch.mean(torch.abs((y - y_pred) / torch.clamp(y, min=1e-7)), axis=0))
         if self.loss_fn == 'maxError':
             return torch.mean(torch.max(torch.abs(y - y_pred), axis=0)[0])

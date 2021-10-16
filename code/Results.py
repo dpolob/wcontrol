@@ -27,7 +27,8 @@ def zmodel(file):
         print(f"{file} no existe. Por favor defina un archivo con --file")
     
     name = cfg["experiment"]
-    cfg = AttrDict(parser.parser_experiment(cfg, name)) # parser de {{experiment}}
+    cfg = parser.parser_experiment(cfg, name) # parser de {{experiment}}
+    cfg = AttrDict(parser.parser_epoch(cfg, cfg.zmodel.dataloaders.test.use_checkpoint)) # parser de {{epoch}}
     with open(Path(cfg.paths.zmodel.predictions), 'rb') as handler:
         predicciones = pickle.load(handler)
         print("Cargado archivo de predicciones")

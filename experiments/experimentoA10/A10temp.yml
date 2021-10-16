@@ -239,7 +239,7 @@ zmodel:
       - 'distancia'
       - 'altitud'
     decoder:
-      lr: 0.01
+      lr: 0.005
       hidden_size: 100
       dropout: 0.0
       features:

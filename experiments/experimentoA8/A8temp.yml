@@ -13,8 +13,8 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion_test.pickle"
-    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
     
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
