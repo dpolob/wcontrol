@@ -17,7 +17,7 @@ def parser_epoch(cfg: dict, epoch: Any=None) -> dict:
         epoch = str(epoch)  # epoch es un numero
     for key in cfg.keys():
         if isinstance(cfg[key], dict):
-            cfg[key] = parser_experiment(cfg[key], epoch)
+            cfg[key] = parser_epoch(cfg[key], epoch)
         if isinstance(cfg[key], str):
             cfg[key] = cfg[key].replace("{{epoch}}", epoch)
     return cfg

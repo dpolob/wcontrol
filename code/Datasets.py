@@ -40,7 +40,7 @@ def zmodel(file):
     with open(output, 'wb') as handler:
         pickle.dump(dfs, handler)
     print(OK)         
-    print(f"Guardando metadatos en {cfg.paths.zmodel.dataset_metadatos}", end='')                    
+    print(f"Guardando metadatos en {cfg.paths.zmodel.dataset_metadata}", end='')                    
     with open(Path(cfg.paths.zmodel.dataset_metadata), 'w') as handler:
         yaml.safe_dump(metadata, handler, allow_unicode=True)
     print(OK)

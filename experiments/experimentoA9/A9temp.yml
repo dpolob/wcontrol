@@ -1,6 +1,6 @@
 experiment: "experimentoA9"
 descripcion: | 
-  720-72 con SME, sin duplicate teaching, shuffle False, scheduler False, sin dias semana
+  720-72 con maxSME, sin duplicate teaching, shuffle False, scheduler False, sin dias semana
   
 prediccion: "temperatura"
 pasado: 144
@@ -13,8 +13,8 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion_test.pickle"
-    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
     
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
@@ -204,7 +204,7 @@ zmodel:
     duplicate_teaching: 400
     loss_function:
       loss_fn: "maxMSE"
-      reduction: 'none'
+      reduction: experiment 
       coefs: (None, None)
     scheduler: False
     encoder:
@@ -264,7 +264,7 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 'best' 
+      use_checkpoint: 15 
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range

@@ -13,8 +13,8 @@ paths:
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
     model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
-    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/prediccion.pickle"
-    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/viz/"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
     #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
@@ -103,17 +103,17 @@ zmodel:
       longitud: -2.7266667
       latitud: 42.4141667
       altitud: 500
-    - nombre: "Arenzana de Abajo"
-      id: 2082
-      format: "%Y-%m-%d %H:%M:%S"
-      metricas:
-        - temperatura
-        - hr
-        - precipitacion
-      ruta: "/home/diego/weather-control/data/processed/2082.csv"
-      longitud: -2.7357180
-      latitud: 42.3828770
-      altitud: 510            
+    # - nombre: "Arenzana de Abajo"
+    #   id: 2082
+    #   format: "%Y-%m-%d %H:%M:%S"
+    #   metricas:
+    #     - temperatura
+    #     - hr
+    #     - precipitacion
+    #   ruta: "/home/diego/weather-control/data/processed/2082.csv"
+    #   longitud: -2.7357180
+    #   latitud: 42.3828770
+    #   altitud: 510            
     - nombre: "Badaran-El Hombro"
       id: 2684
       format: "%Y-%m-%d %H:%M:%S"
@@ -232,8 +232,6 @@ zmodel:
       - 'precipitacionmacdsenal'
       - 'dia_sin'
       - 'dia_cos'
-      - 'diasemana_sin'
-      - 'diasemana_cos'
       - 'mes_sin'
       - 'mes_cos'
       - 'distancia'
@@ -245,8 +243,6 @@ zmodel:
       features:
       - 'dia_sin'
       - 'dia_cos'
-      - 'diasemana_sin'
-      - 'diasemana_cos'
       - 'mes_sin'
       - 'mes_cos'
       - 'distancia'
@@ -264,7 +260,7 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 'best' 
+      use_checkpoint: 15
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range
