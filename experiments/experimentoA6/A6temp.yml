@@ -1,9 +1,9 @@
-experiment: "experimentoA9"
+experiment: "experimentoA6"
 descripcion: | 
-  720-72 con maxSME, sin duplicate teaching, shuffle False, scheduler False, sin dias semana
-  
+  1440-72 sum 0.5 0.5 lr 0.01 0.01 
+  1440-72 sum 0.5 0.5 lr 0.01 0.01 teacher 0.4
 prediccion: "temperatura"
-pasado: 144
+pasado: 1440
 futuro: 72
 paths:
   zmodel:
@@ -18,7 +18,6 @@ paths:
     
   pmodel:
     dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
-    
     #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
     # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
     runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/"
@@ -72,17 +71,17 @@ zmodel:
     #   longitud: 2.9137689
     #   latitud: 42.3429392
     #   altitud: 1299
-    # - nombre: "Arenzana de Abajo"
-    #   id: 35
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/35.csv"
-    #   longitud: -2.7242639
-    #   latitud: 42.3925069
-    #   altitud: 523
+    - nombre: "Arenzana de Abajo"
+      id: 35
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/35.csv"
+      longitud: -2.7242639
+      latitud: 42.3925069
+      altitud: 523
     - nombre: "Baños de Río Tobía"
       id: 102
       format: "%Y-%m-%d %H:%M:%S"
@@ -195,21 +194,21 @@ zmodel:
       altitud: 600
   model:
     name: "seq2seq_2layers"
-    epochs: 30
+    epochs: 25
     use_cuda: True
     save_model: True
     plot_intermediate_results: False
-    early_stop: 5
-    teacher_forcing: 0.2
-    duplicate_teaching: 400
+    early_stop: 10
+    teacher_forcing: 0.4
+    duplicate_teaching: 100
     loss_function:
-      loss_fn: "maxMSE"
-      reduction: experiment 
-      coefs: (None, None)
-    scheduler: False
+      loss_fn: 'sum'
+      reduction: 'mean'
+      coefs: (0.50, 0.50)
+    scheduler: True
     encoder:
       lr: 0.01
-      rnn_num_layers: 1
+      rnn_num_layers: 2
       hidden_size: 100
       bidirectional: False
       rnn_dropout: 0.0  # only for rnn_num_layers > 1
@@ -239,7 +238,7 @@ zmodel:
       - 'distancia'
       - 'altitud'
     decoder:
-      lr: 0.005
+      lr: 0.01
       hidden_size: 100
       dropout: 0.0
       features:
@@ -264,14 +263,14 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 15 
+      use_checkpoint: "best"
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range
       inicio: 0
       fin: "end"
       paso: 50
-      
+
 pmodel:
   estaciones:
     - nombre: "Villaverde"

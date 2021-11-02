@@ -4,11 +4,11 @@ import pickle
 
 from pathlib import Path
 from attrdict import AttrDict
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 
 import common.utils.parser as parser
-from common.data_preprocessing.modules import haversine, distanciasCdG
-from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
+#from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
+from common.data_preprocessing.modules_powerT import generarvariablesZmodel, generarvariablesPmodel
 
 OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
 FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
@@ -70,7 +70,7 @@ def pmodel(file):
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     
     with open(output, 'wb') as handler:
-        pickle.dump(df, handler)
+        pickle.safe_dump(df, handler)
     print(OK)
 
     

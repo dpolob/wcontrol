@@ -1,6 +1,8 @@
 #%%
 import numpy as np
 
+
+EPS = 10e-7
 def mediaMovil(arr: np.ndarray, periodo: int) -> np.ndarray:
     """Calcula la media movil de n periodos
 
@@ -214,4 +216,83 @@ def integral_precipitacion(arr: np.ndarray=None, periodo: int=None, muestras_dia
         muestras_dia (int, optional): [description]. Defaults to 1.
     """
     return (mediaMovil(arr=arr, periodo=periodo * muestras_dia))
-# %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def indice_angtrom_inst(precipitacion: np.ndarray, temperatura: np.ndarray, muestras_dia: int=1) -> np.ndarray:
+    """Índice de Angström: es igual a la precipitación media mensual
+    multiplicada por 1,07, elevado a la temperatura media mensual con signo negativo.
+    Índice de Angström = P * 1,07^(-T)
+    en donde P = Precipitaciones mensual (mm) y T = Temperatura media mensual (ºC).
+
+    Args:
+        precipitacion (np.ndarray): Precipitación mensual (30 dias anteriores)
+        temperatura (np.ndarray): Temperatura media mensual (30 dias anteriores)
+        muestras_dia (int): en caso de la frecuencia no se diaria se especifica la frecuencia
+
+    Returns:
+        np.ndarray: Tndice de Angtrom
+    """
+    return precipitacion * np.power(1.07, temperatura)
+
+def indice_gasparin_inst(precipitacion: np.ndarray, temperatura: np.ndarray, muestras_dia: int=1) -> np.ndarray:
+    """Índice de Gasparín: es igual a la precipitación anual entre la temperatura media anual
+    Indice de Gasparín = P / (50·T)
+    en donde P es la precipitación anual total (en mm.) y T es la temperatura media anual (en Cº).
+
+    Args:
+        precipitacion (np.ndarray): precipitacion media anual (365 dias)
+        temperatura (np.ndarray): temperatura media anual (365 dias)
+        muestras_dia (int): en caso de la frecuencia no se diaria se especifica la frecuencia
+
+    Returns:
+        np.ndarray: Indice de Gasparin
+    """
+    P = mediaMovil(precipitacion, 365 * muestras_dia)
+    T = mediaMovil(temperatura, 365 * muestras_dia)
+    return precipitacion / (50 * temperatura + EPS)
+
+def indice_martonne_inst(precipitacion: np.ndarray, temperatura: np.ndarray, muestras_dia: int=1) -> np.ndarray:
+    """Índice de Martonne o índice de aridez de Martonne (1926). Permite una primera i
+    dentificación fitoclimática del mundo, aunque es especialmente efectivo en zonas tropicales y subtropicales. Puede calcularse el índice anual o el mensual cuyas fórmulas son:
+    IMmensual = [Pm/(Tm+10)]*12
+    en donde Pm = Precipitación media mensual en mm; Tm = Temperatura media mensual en grados centígrados.
+
+    Args:
+        precipitacion (np.ndarray): Precipitación mensual (30 dias anteriores)
+        temperatura (np.ndarray): Temperatura media mensual (30 dias anteriores)
+        muestras_dia (int): en caso de la frecuencia no se diaria se especifica la frecuencia
+
+    Returns:
+        np.ndarray: Tndice de Angtrom
+    """
+    return (precipitacion / (10 + temperatura + EPS) * 12)
+
+
+

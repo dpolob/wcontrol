@@ -7,6 +7,9 @@ from pathlib import Path
 from functools import reduce
 from tqdm import tqdm
 
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+
 
 raw_path = Path('/home/diego/weather-control/data/raw/sql-raw/raw.csv')
 raw = pd.read_csv(raw_path, header=0, na_values='\0',sep=";")
@@ -36,11 +39,20 @@ for ubicacion in tqdm(ubicaciones, desc='Ubicaciones', leave=True):
 # Ubicaciion 25
 df_path = Path("/home/diego/weather-control/data/processed/25.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
-print(df.isna().sum())
 df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
 df.set_index('fecha', drop=False, inplace=True)
+print(df.isna().sum())
 
-
+fechas = df['fecha']
+df.drop(columns=['fecha'], inplace=True)
+imp_mean = IterativeImputer(random_state=0)
+idf = imp_mean.fit_transform(df)
+idf = pd.DataFrame(idf, columns=df.columns)
+df['temperatura'] = idf['temperatura'].values
+df['hr'] = idf['hr'].values
+df['precipitacion'] = idf['precipitacion'].values
+df['fecha'] = fechas
+print(df.isna().sum())
 
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
@@ -68,12 +80,27 @@ df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
 df.set_index('fecha', drop=False, inplace=True)
 
 print(df.isna().sum())
+print(df[df.isna().any(axis=1)])
+nanas=df[df.isna().any(axis=1)].index
 
+fechas = df['fecha']
+df.drop(columns=['fecha'], inplace=True)
+imp_mean = IterativeImputer(random_state=0)
+idf = imp_mean.fit_transform(df)
+idf = pd.DataFrame(idf, columns=df.columns)
+df['temperatura'] = idf['temperatura'].values
+df['hr'] = idf['hr'].values
+df['precipitacion'] = idf['precipitacion'].values
+df['fecha'] = fechas
+print(df.isna().sum())
+
+print(df.loc[nanas, :])
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
+df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 102
 df_path = Path("/home/diego/weather-control/data/processed/102.csv")

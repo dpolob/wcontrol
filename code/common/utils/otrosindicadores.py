@@ -20,4 +20,4 @@ def macd(arr: np.ndarray, corta: int=12, larga: int=26, señal: int=9) -> tuple:
     exp3 = macd.ewm(span=señal, adjust=False).mean()
     macd_señal = macd - exp3
     
-    return np.array(macd.values), np.array(macd_señal.values)
+    return np.array(macd.values) - np.array(macd_señal.values)

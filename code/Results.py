@@ -31,6 +31,7 @@ def zmodel(file):
     cfg = parser.parser_experiment(cfg, name) # parser de {{experiment}}
     cfg = AttrDict(parser.parser_epoch(cfg, epoch)) # parser de {{epoch}}
 
+    print(f"Usando {cfg.paths.zmodel.predictions} como archivo de predicciones")
     with open(Path(cfg.paths.zmodel.predictions), 'rb') as handler:
         predicciones = pickle.load(handler)
         print("Cargado archivo de predicciones")

@@ -29,7 +29,7 @@ class TorchTrainer():
         self.runs_path = kwargs.get('runs_folder', None)
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 50)
-        self.writer = SummaryWriter(self.runs_path)
+        self.writer = None  # se inicializa en el train, para predict no hay 
         
         self.scheduler_batch_step = kwargs.get('scheduler_batch_step', False)
         self.additional_metric_fns = kwargs.get('additional_metric_fns', {})
@@ -231,7 +231,7 @@ class TorchTrainer():
                 yt = yt.to(self.device)
                 y = y.to(self.device)
 
-                y_pred = self.model(xt, x, yt, y)
+                y_pred = self.model(xt, x, yt, y, teacher=False)
                 #tqdm.write(y_pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)
@@ -263,7 +263,9 @@ class TorchTrainer():
     #     lr_finder.plot()
         
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
+        self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
+        
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
@@ -295,7 +297,7 @@ class TorchTrainer():
                     training_losses.append(running_loss / 100)
                     running_loss = 0
                     # additional_running_loss = [0 for _ in self.additional_metric_fns]
-                if plot and it % 10000 == 9999:
+                if plot and it % 1000 == 999:
                     fig =plt.figure(figsize=(26,12))
                     plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
                     plt.plot(torch.mean(y_pred, dim=0).cpu().detach().numpy().reshape(-1,1), 'r')

@@ -263,7 +263,7 @@ zmodel:
       enable: True
       fecha_inicio: "2021-05-01 00:00:00"
       fecha_fin: "2021-05-30 23:00:00"
-      use_checkpoint: 10
+      use_checkpoint: "best"
   resultados:
     visualizacion:
       muestras: "range" # random, all, list, range

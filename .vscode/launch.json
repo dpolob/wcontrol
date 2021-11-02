@@ -14,7 +14,7 @@
             "console": "integratedTerminal",
             "args": [
                 "zmodel", 
-                "--file", "/home/diego/weather-control/experiments/experimentoA1/A1temp.yml"
+                "--file", "/home/diego/weather-control/experiments/experimentoB1/B1.yml"
             ]
              
         }

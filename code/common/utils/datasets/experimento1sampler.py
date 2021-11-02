@@ -10,7 +10,7 @@ class Seq2SeqSampler(Sampler):
     """Implementa un sampler específico
     """
     def __init__(self, datasets: list, pasado: int, futuro: int, shuffle: bool=False) -> list:
-        """Constructor. Devuelve un array con los indices de los muestras a obtener
+        """Devuelve un array con los indices de los muestras a obtener
 
         Args:
             dataset (list): Lista de pd.DataFrame

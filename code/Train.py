@@ -37,12 +37,15 @@ def zmodel(file):
         print(f"{file} no existe. Por favor defina un archivo con --file")
         exit()
     
+       
     name = cfg["experiment"]
     cfg = AttrDict(parser.parser_experiment(cfg, name))
+    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+        metadata = yaml.safe_load(handler)
+    print("Leidos metadatos del dataset")
     
     with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
         datasets = pickle.load(handler)
-
     print(f"Usando {name} como nombre del experimento")
     
     runs_path = Path(cfg.paths.zmodel.runs)
@@ -83,18 +86,18 @@ def zmodel(file):
     NO = Fore.RED + "NO" + Style.RESET_ALL
     print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
     
-    inicio = min([_ for _ in [FECHA_INICIO_TRAIN, FECHA_INICIO_VALID] if _ is not None])
-    
+    fecha_inicio = datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S")
+       
     # Split datasets
     if TRAIN:
-        x = (FECHA_INICIO_TRAIN - inicio).days * 24 + (FECHA_INICIO_TRAIN - inicio).seconds / 3600
-        y = (FECHA_FIN_TRAIN - inicio).days * 24 + (FECHA_FIN_TRAIN - inicio).seconds / 3600
+        x = (FECHA_INICIO_TRAIN - fecha_inicio).days * 24 + (FECHA_INICIO_TRAIN - fecha_inicio).seconds / 3600
+        y = (FECHA_FIN_TRAIN - fecha_inicio).days * 24 + (FECHA_FIN_TRAIN - fecha_inicio).seconds / 3600
         # x=0; y=500
         print(f"Generando dataset de train desde {x} a {y}")
         dfs_train = [df.loc[(df.index >= x ) & (df.index <= y), :] for df in datasets]
     if VALIDATION:
-        x = (FECHA_INICIO_VALID - inicio).days * 24 + (FECHA_INICIO_VALID - inicio).seconds / 3600
-        y = (FECHA_FIN_VALID - inicio).days * 24 + (FECHA_FIN_VALID - inicio).seconds / 3600
+        x = (FECHA_INICIO_VALID - fecha_inicio).days * 24 + (FECHA_INICIO_VALID - fecha_inicio).seconds / 3600
+        y = (FECHA_FIN_VALID - fecha_inicio).days * 24 + (FECHA_FIN_VALID - fecha_inicio).seconds / 3600
         # x=1001; y=1500
         print(f"Generando dataset de validation desde {x} a {y}")
         dfs_valid = [df.loc[(df.index >= x ) & (df.index <= y), :] for df in datasets]

@@ -8,7 +8,6 @@
 # corregir maxMSE y maxL1 porque no solo sacaban en máximo entre todas las series. Ahora se hace media
 # MAX(MEAN(error(reduction=none)))
 
-Eliminar estacion de Arenzana que esta repetida!!!!!!!!!!!!!
+# Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
 
-
-Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
+seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
