@@ -14,9 +14,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import common.utils.parser as parser
-from common.utils.datasets import experimento1dataset as ds
-from common.utils.datasets import experimento1sampler as sa
-from common.utils.trainers import experimento1trainer as tr
+from common.utils.datasets import dataset_seq2seq as ds
+from common.utils.datasets import sampler_seq2seq as sa
+from common.utils.trainers import trainerSeq2Seq as tr
 from common.utils.loss_functions import lossfunction as lf
 #from models.seq2seq import experimento1model as md
 import importlib
@@ -61,9 +61,10 @@ def zmodel(file):
     FUTURO = cfg.futuro
     EPOCHS = cfg.zmodel.model.epochs
     kwargs_loss = cfg.zmodel.model.loss_function
-    PREDICCION = cfg.prediccion
+    PREDICCION = list(cfg.prediccion)
     FEATURES = list(cfg.zmodel.model.encoder.features)
     DEFINIDAS = list(cfg.zmodel.model.decoder.features)
+    NWP = list(cfg.zmodel.model.decoder.nwp)
     
     TRAIN = cfg.zmodel.dataloaders.train.enable
     if TRAIN:
@@ -113,7 +114,8 @@ def zmodel(file):
                                                                 futuro=FUTURO,
                                                                 etiquetaX=PREDICCION,
                                                                 etiquetaF=FEATURES,
-                                                                etiquetaT=DEFINIDAS),
+                                                                etiquetaT=DEFINIDAS,
+                                                                etiquetaP=NWP),
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_train,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
@@ -131,7 +133,8 @@ def zmodel(file):
                                                                 futuro=FUTURO,
                                                                 etiquetaX=PREDICCION,
                                                                 etiquetaF=FEATURES,
-                                                                etiquetaT=DEFINIDAS),
+                                                                etiquetaT=DEFINIDAS,
+                                                                etiquetaP=NWP),
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_valid,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
@@ -177,16 +180,16 @@ def zmodel(file):
     # Funciones loss
     loss_fn = lf.LossFunction(**kwargs_loss)
     
-    encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=1e-3)
-    decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=1e-3)
+    encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
+    decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
     if cfg.zmodel.model.scheduler:
-        encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=1e-3, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
-        decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=1e-3, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
+        encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=cfg.zmodel.model.encoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
+        decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
         scheduler = [encoder_scheduler, decoder_scheduler]
     else:
         scheduler = None
-    model_optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
-    scheduler = optim.lr_scheduler.OneCycleLR(model_optimizer, max_lr=3e-3, steps_per_epoch=len(train_dataloader), epochs=6)
+    model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
+    scheduler = optim.lr_scheduler.OneCycleLR(model_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=6)
 
     
     trainer = tr.TorchTrainer(name=name,

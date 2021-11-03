@@ -13,6 +13,12 @@ from sklearn.impute import IterativeImputer
 from sklearn.impute import SimpleImputer
 
 
+def precipitacionmenorzero(df: pd.DataFrame=None) -> pd.DataFrame:
+    df.loc[df.precipitacion <0, ['precipitacion']] = 0
+    return df
+
+
+
 raw_path = Path('/home/diego/weather-control/data/raw/sql-raw/raw.csv')
 raw = pd.read_csv(raw_path, header=0, na_values='\0',sep=";")
 
@@ -137,7 +143,8 @@ ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
-df.to_csv(df_path, header=True, index=False, na_rep="NaN")
+
+#df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 # %%
 # Ubicaciion 2082
 df_path = Path("/home/diego/weather-control/data/processed/2082.csv")
@@ -171,6 +178,7 @@ ax[1].plot(df['hr'])
 ax[2].plot(df['precipitacion'])
 plt.show()
 df['fecha'] = df.index
+df = precipitacionmenorzero(df)
 df.to_csv(df_path, header=True, index=False, na_rep="NaN")
 
 # %%

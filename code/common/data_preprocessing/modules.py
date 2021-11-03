@@ -29,6 +29,7 @@ from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 import common.predict.modules as predictor
 import common.utils.parser as parser
+from sklearn.preprocessing import PowerTransformer
 
 from datetime import datetime, timedelta
 import common.utils.indicesbioclimaticos as bio
@@ -80,7 +81,7 @@ def haversine(lat1: float, long1: float, lat2: float, long2: float) -> float:
     km = 6367 * c
     return abs(km)
 
-def cyclic(column_date: pd.DataFrame) -> tuple:
+def cyclic(df: pd.DataFrame= None, column_date: pd.DataFrame=None) -> tuple:
     """Generador de variables de fecha ciclicas
 
     Args:
@@ -90,21 +91,20 @@ def cyclic(column_date: pd.DataFrame) -> tuple:
         tuple: (día_sin, dia_cos, mes_sin, mes_cos)
     """
         
-    df = pd.DataFrame()
-
     df['dia'] = column_date.apply(lambda x: x.day * 2 * pi / 31)
     df['dia_sin'] = np.sin(df['dia'])
     df['dia_cos'] = np.cos(df['dia'])
-
-    # df['diasemana'] = column_date.apply(lambda x: x.isoweekday() * 2 * pi  / 7)
-    # df['diasemana_sin'] = np.sin(df['diasemana'])
-    # df['diasemana_cos'] = np.cos(df['diasemana'])
-
+    
     df['mes'] = column_date.apply(lambda x: x.month * 2 * pi  / 12)
     df['mes_sin'] = np.sin(df['mes'])
     df['mes_cos'] = np.cos(df['mes'])
-
-    return (df['dia_sin'], df['dia_cos'], df['mes_sin'], df['mes_cos'])
+    
+    df['hour'] = column_date.apply(lambda x: x.hour * 2 * pi  / 24)
+    df['hora_sin'] = np.sin(df['mes'])
+    df['hora_cos'] = np.cos(df['mes'])
+    
+    df.drop(columns=['dia', 'mes', 'hour'], inplace=True)
+    return df
 
 def check_variables_entrada(df: pd.DataFrame=None) -> bool:
     if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns:
@@ -136,51 +136,42 @@ def check_longitud(df: pd.DataFrame=None, longitud: int=None) -> bool:
         return False
     
 def quitar_nans(df: pd.DataFrame=None) -> pd.DataFrame:
-    # chequear que las variables ciclicas de fecha estan y si no es asi crearlas
-    if not set(['dia_sin', 'dia_cos', 'mes_sin', 'mes_cos']).issubset(df.columns):
-        tqdm.write("Las variables cíclicas de fecha no estan creadas" + FAIL)
-        return None
-    tqdm.write(f"{df.isna().sum().sum()}", end='')
-    if not check_no_nan(df):
-        imp_mean = IterativeImputer(random_state=0)
-        idf=imp_mean.fit_transform(df)
-        idf = pd.DataFrame(idf, columns=df.columns)
-        df['temperatura'] = idf['temperatura'].values
-        df['hr'] = idf['hr'].values
-        df['precipitacion'] = idf['precipitacion'].values
-        del idf
-        tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
-        tqdm.write("\t" + OK)
-        if not check_no_nan(df):
-            tqdm.write("Quedan NaNs en el dataset. Por favor compruebe")
-            return None
-    return df
+    
+    # df['fecha'] = df.index
+    # df['dia'], df['mes'], df['hour'] = cyclic(df['fecha'])
+    # df.drop(columns=['fecha'], inplace=True)
+    # tqdm.write(f"{df.isna().sum().sum()}", end='')
+    # if not check_no_nan(df):
+    #     imp_mean = IterativeImputer(random_state=0)
+    #     idf=imp_mean.fit_transform(df)
+    #     idf = pd.DataFrame(idf, columns=df.columns)
+    #     df['temperatura'] = idf['temperatura'].values
+    #     df['hr'] = idf['hr'].values
+    #     df['precipitacion'] = idf['precipitacion'].values
+    #     del idf
+    #     tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
+    #     tqdm.write("\t" + OK)
+    #     if not check_no_nan(df):
+    #         tqdm.write("Quedan NaNs en el dataset. Por favor compruebe")
+    #         return None
+    # df.drop(columns=['dia', 'mes', 'hour'], inplace=True)
+    return df.fillna(df.mean())
 
 def variables_bioclimaticas(df: pd.DataFrame=None) -> tuple:
     var_bio =[]
     if set(['temperatura']).issubset(set(df.columns)): 
         df['integraltermica'] = bio.integral_termica(temperatura=np.array(df['temperatura'].values))
         var_bio.append('integraltermica')
-        df['indicehugling'] = bio.indice_hugling(temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        var_bio.append('indicehugling')
-        df['biotemperatura'] = bio.biotemperatura(temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        var_bio.append('biotemperatura')
     if set(['precipitacion']).issubset(set(df.columns)): 
         df['integralrain'] = bio.integral_precipitacion(arr=np.array(df['precipitacion'].values,), periodo=3 * 30)
         var_bio.append('integralrain')
     if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        df['indicelasser'] = bio.indice_lasser(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        var_bio.append('indicelasser')
         df['indiceangtrom'] = bio.indice_angtrom(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
         var_bio.append('indiceangtrom')
         df['indicemartonne'] = bio.indice_martonne(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values),muestras_dia=24)
         var_bio.append('indicemartonne')
-        df['indicebirot'] = bio.indice_birot(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        var_bio.append('indicebirot')
         df['indicelang'] = bio.indice_lang(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
         var_bio.append('indicelang')
-        df['indicegasparin'] = bio.indice_gasparin(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        var_bio.append('indicegasparin')
     if not check_no_nan(df):
         tqdm.write("Se han generado NANs" + FAIL)
         return (None, None)
@@ -214,7 +205,7 @@ def extraccionFuturo(df: pd.DataFrame, k: int=30 ) -> np.array:
             data[i, j] = df.iloc[i + j + 1, 0]
     return data
         
-def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outliers: list=None) -> tuple:
+def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outliers: list=None, proveedor: dict=None) -> tuple:
     """[summary]
 
     Args:
@@ -241,7 +232,7 @@ def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outlie
         else:
             df = pd.read_csv(ruta, sep=',', decimal='.', header='infer')
             df['fecha'] = pd.to_datetime(df['fecha'], format=estacion["format"] if "format" in estacion.keys() else "%Y-%m-%d %H:%M:%S")
-            df.set_index(df['fecha'], drop=True, inplace=True)
+            df.set_index('fecha', drop=True, inplace=True)
             tqdm.write(OK)
         
         tqdm.write(f"\tComprobando variables de entrada", end='')
@@ -252,100 +243,57 @@ def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outlie
         if not check_outliers(df, metricas, outliers):
             exit()
         
+       
+        tqdm.write(OK)
+        
         tqdm.write(f"\tResample a 1 hora", end='')
-        df = df.resample('1H').mean()
+        df = df.resample('1H').interpolate()
         tqdm.write(OK)
         
         tqdm.write(f"\tComprobando longitud del dataset mayor de un año", end='')
         if not check_longitud(df, 365 * 24):
             continue
         
-        tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
-        df['fecha'] = df.index
-        df['dia_sin'], df['dia_cos'], df['mes_sin'], df['mes_cos'] = cyclic(df['fecha'])
-        df.drop(columns=['fecha'], inplace=True)
-        tqdm.write(OK)
-        
         tqdm.write(f"\tEliminando NaNs...", end='')
         df = quitar_nans(df)
-        if df is None:
-            exit()
+        tqdm.write(OK)
+       
+        tqdm.write("Agregar predicciones", end='')
+        nwp = pd.read_csv(proveedor.ruta, sep=',', decimal='.', header='infer')
+        nwp['fecha'] = pd.to_datetime(nwp['fecha'], format=proveedor.format if "format" in proveedor.keys() else "%Y-%m-%d %H:%M:%S")
+        nwp.rename(columns = {'temperatura': 'nwp_temperatura'}, inplace = True)
+        nwp.rename(columns = {'hr':'nwp_hr'}, inplace = True)
+        nwp.rename(columns = {'precipitacion':'nwp_precipitacion'}, inplace = True)
+        nwp.set_index('fecha', drop=True, inplace=True)
+        nwp = nwp.resample('1H').interpolate()
+        nwp = quitar_nans(nwp)
+        df = df.join(nwp, how='inner')
+        nwp = quitar_nans(nwp)
+        var_nwp = ['nwp_temperatura', 'nwp_hr', 'nwp_precipitacion']
+        
 
         tqdm.write(f"\tCalculando variables climáticas", end='')
         var_bio, df = variables_bioclimaticas(df)
         if var_bio is None:
             exit()
           
-            
-        # if set(['temperatura']).issubset(set(df.columns)): 
-        #     df['biotemperatura'] = bio.biotemperatura(temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['biotemperatura'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['biotemperatura']" + Style.RESET_ALL
-        # if set(['temperatura']).issubset(set(df.columns)): 
-        #     df['integraltermica'] = bio.integral_termica(temperatura=np.array(df['temperatura'].values))
-        #     assert df['integraltermica'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['integraltermica']" + Style.RESET_ALL
-        # if set(['precipitacion']).issubset(set(df.columns)): 
-        #     df['integralrain'] = bio.integral_precipitacion(arr=np.array(df['precipitacion'].values,), periodo=3 * 30)
-        #     assert df['integralrain'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['integralrain']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        #     df['indicelasser'] = bio.indice_lasser(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indicelasser'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicelasser']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        #     df['indicelang'] = bio.indice_lang(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indicelang'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicelang']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        #     df['indiceangtrom'] = bio.indice_angtrom(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indiceangtrom'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['angtrom']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        #     df['indicegasparin'] = bio.indice_gasparin(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indicegasparin'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicegasparin']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)): 
-        #     df['indicemartonne'] = bio.indice_martonne(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indicemartonne'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicemartonne']" + Style.RESET_ALL
-        # if set(['temperatura', 'precipitacion']).issubset(set(df.columns)):     
-        #     df['indicebirot'] = bio.indice_birot(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-        #     assert df['indicebirot'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicebirot']" + Style.RESET_ALL
-        # if set(['temperatura']).issubset(set(df.columns)): 
-        #     df['indicehugling'] = bio.indice_hugling(temperatura=np.array(df['temperatura'].values),  muestras_dia=24)
-        #     assert df['indicehugling'].isna().sum() == 0, Fore.RED + "Existen NaNs!! en df['indicehugling']" + Style.RESET_ALL
-        # if check_no_nan(df):
-        #     tqdm.write(OK)
-        # else:
-        #     tqdm.write("Se han generado NANs!!" + FAIL)
-        #     exit()
-        
+       
         tqdm.write(f"\tCalculando MACD", end='')
         var_macd, df = variables_macd(df)
         if var_macd is None:
             exit()
        
-        tqdm.write(f"\tAplicando escalado:", end='')
-        # escalar datos
-        
-        # for metrica in ['temperatura', 'hr', 'precipitacion']:
-        #     escalador = escaladores[metrica]
-        #     scaler = Escalador(Xmax=escalador['max'], Xmin=escalador['min'], min=-1, max=1, auto_scale=False)
-        #     df[metrica] = scaler.transform(np.array(df[metrica].values))
-        # for metrica in var_bio:
-        #     scaler = Escalador(min=-1, max=1, auto_scale=True)
-        #     df[metrica] = scaler.transform(np.array(df[metrica].values))
-        # for metrica in var_macd:
-        #     scaler = Escalador(min=-1, max=1, auto_scale=True)
-        #     df[metrica] = scaler.transform(np.array(df[metrica].values))       
-        # if check_no_nan(df):
-        #     tqdm.write(OK)
-        # else:
-        #     tqdm.write("Se han generado NANs!!" + FAIL)
-        #     exit()     
-            
-        
-
-        # tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
-        # df['dia_sin'], df['dia_cos'], df['mes_sin'], df['mes_cos'] = cyclic(df.index)
-        # if check_no_nan(df):
-        #     tqdm.write(OK)
-        # else:
-        #     tqdm.write("Se han generado NANs!!" + FAIL)
-        #     exit()
+               
+        tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
+        df['fecha'] = df.index
+        df = cyclic(df, df['fecha'])
+        df.drop(columns=['fecha'], inplace=True)
+        tqdm.write(OK)
+        if check_no_nan(df):
+            tqdm.write(OK)
+        else:
+            tqdm.write("Se han generado NANs!!" + FAIL)
+            exit()
 
         tqdm.write(f"\tGrabando posicion de la estacion ", end='')
         df['longitud'] = estacion["longitud"]
@@ -389,6 +337,39 @@ def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outlie
         
     tqdm.write(OK)
     
+    tqdm.write(f"\tAplicando escalado:", end='')
+    
+        # # escalar datos
+        # pt = PowerTransformer(method='yeo-johnson', standardize=True)
+        # df = pd.DataFrame(pt.fit_transform(df), columns=df.columns, index=df.index)
+        # if check_no_nan(df):
+        #     tqdm.write(OK)
+        # else:
+        #     tqdm.write("Se han generado NANs!!" + FAIL)
+        #     exit()     
+    parametros = dict()
+    for metrica in (['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp):
+        parametros[metrica] = dict()
+        parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
+        parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))
+        
+        if metrica == 'nwp_temperatura':
+            parametros[metrica]['max'] = parametros['temperatura']['max']
+            parametros[metrica]['min'] = parametros['temperatura']['min']
+        if metrica == 'nwp_hr':
+            parametros[metrica]['max'] = parametros['hr']['max']
+            parametros[metrica]['min'] = parametros['hr']['min']
+        if metrica == 'nwp_precipitacion':
+            parametros[metrica]['max'] = parametros['precipitacion']['max']
+            parametros[metrica]['min'] = parametros['precipitacion']['min']
+            
+        scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
+        for df in tqdm(dfs):
+            df[metrica] = scaler.transform(np.array(df[metrica].values))
+            if not check_no_nan(df):
+                tqdm.write("Se han generado NANs!!" + FAIL)
+                exit()
+  
     tqdm.write(f"Generando metadatos ", end='')
     metadata = {}
     metadata["longitud"] = len(dfs)
@@ -400,6 +381,8 @@ def generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outlie
     metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
     metadata['indice_min'] = min([_.index.min() for _ in dfs])
     metadata['indice_max'] = max([_.index.max() for _ in dfs])
+    metadata['escaladores'] = {}
+    metadata['escaladores'] = parametros
     tqdm.write(OK)
     
     return (dfs, metadata)
@@ -429,7 +412,7 @@ def generarvariablesPmodel(estacion:list=None, estaciones: list=None, escaladore
         exit()
         
     tqdm.write(f"\tResample a 1 hora", end='')
-    df = df.resample('1H').mean()
+    df = df.resample('1H').interpolate()
     tqdm.write(OK)
   
     tqdm.write(f"\tComprobando longitud del dataset (mínimo 30 días)", end='')
@@ -438,7 +421,7 @@ def generarvariablesPmodel(estacion:list=None, estaciones: list=None, escaladore
     
     tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
     df['fecha'] = df.index
-    df['dia_sin'], df['dia_cos'], df['diasemana_sin'], df['diasemana_cos'], df['mes_sin'], df['mes_cos'] = cyclic(df['fecha'])
+    df['dia'], df['mes'], df['hour'] = cyclic(df['fecha'])
     df.drop(columns=['fecha'], inplace=True)
     tqdm.write(OK)
 

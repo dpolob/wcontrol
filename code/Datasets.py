@@ -8,7 +8,7 @@ from colorama import Fore, Style
 
 import common.utils.parser as parser
 #from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
-from common.data_preprocessing.modules_powerT import generarvariablesZmodel, generarvariablesPmodel
+from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 
 OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
 FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
@@ -33,7 +33,8 @@ def zmodel(file):
     cfg = AttrDict(parser.parser_experiment(cfg, name)) # parser de {{experiment}}
     dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.zmodel.estaciones), 
                                            escaladores = cfg.preprocesado.escaladores, 
-                                           outliers = cfg.preprocesado.outliers)
+                                           outliers = cfg.preprocesado.outliers,
+                                           proveedor= cfg.zmodel.proveedor[0])
     output = Path(cfg.paths.zmodel.dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
     print(f"Guardando salida en {cfg.paths.zmodel.dataset}", end='')

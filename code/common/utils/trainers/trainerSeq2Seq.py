@@ -155,7 +155,7 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xt, X, Yt, Y, teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
+    def _loss_batch(self, Xt, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
         #if type(xb) is list:
         #    xb = [xbi.to(self.device) for xbi in xb]
         #else:
@@ -166,11 +166,12 @@ class TorchTrainer():
         X = X.to(self.device)
         Yt = Yt.to(self.device)
         Y = Y.to(self.device)
+        P = P.to(self.device)
         
         if pass_y:
-            y_pred = self.model(Xt, X, Yt, Y, teacher)
+            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
         else:
-            y_pred = self.model(Xt, X, Yt, Y, teacher)
+            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
 
         loss = self.loss_fn(y_pred, Y[:, 1:, :])  # debo quitar la componente 0
         if additional_metrics is not None:
@@ -183,7 +184,7 @@ class TorchTrainer():
         del X
         del Yt
         del Y
-        
+        del P
         del loss
         if additional_metrics is not None:
             if return_ypred:
@@ -201,8 +202,8 @@ class TorchTrainer():
         eval_bar = tqdm(dataloader, leave=False)
         loss_values = []
         with torch.no_grad():
-            for Xt, X, Yt, Y in eval_bar:
-                loss_value = self._loss_batch(Xt, X, Yt, Y, False, False, False)
+            for Xt, X, Yt, Y, P in eval_bar:
+                loss_value = self._loss_batch(Xt, X, Yt, Y, P, False, False, False)
                 loss_values.append(loss_value)
                 # if len(loss_values[0]) > 1:
                 #     loss_value = np.mean([lv[0] for lv in loss_values])
@@ -220,7 +221,7 @@ class TorchTrainer():
         self.model.eval()
         predictions = []
         with torch.no_grad():
-            for xt, x, yt, y in tqdm(dataloader):
+            for xt, x, yt, y, P in tqdm(dataloader):
                 # if type(xb) is list:
                 #     xb = [xbi.to(self.device) for xbi in xb]
                 # else:
@@ -230,8 +231,9 @@ class TorchTrainer():
                 x = x.to(self.device)
                 yt = yt.to(self.device)
                 y = y.to(self.device)
+                P = P.to(self.device)
 
-                y_pred = self.model(xt, x, yt, y, teacher=False)
+                y_pred = self.model(xt, x, yt, y, P, teacher=False)
                 #tqdm.write(y_pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)
@@ -276,11 +278,12 @@ class TorchTrainer():
             running_loss = 0
             # additional_running_loss = [0 for _ in self.additional_metric_fns]
             training_bar = tqdm(train_dataloader, leave=False)
-            for it, (Xt, X, Yt, Y) in enumerate(training_bar):
+            for it, (Xt, X, Yt, Y, P) in enumerate(training_bar):
                 loss, y_pred = self._loss_batch(Xt=Xt,
                                         X=X,
                                         Yt=Yt,
                                         Y=Y,
+                                        P=P,
                                         teacher=True,
                                         optimize=True,
                                         pass_y=self.pass_y,

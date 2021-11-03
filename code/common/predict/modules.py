@@ -36,6 +36,7 @@ def predict(**kwargs):
     etiquetaX = kwargs.get('etiquetaX', None)
     etiquetaF = kwargs.get('etiquetaF', None)
     etiquetaT = kwargs.get('etiquetaT', None)
+    etiquetaP = kwargs.get('etiquetaP', None)
     name = kwargs.get('name', None)
     model_name = kwargs.get('model_name', None)
     rnn_num_layers = kwargs.get('rnn_num_layers', None)
@@ -53,7 +54,6 @@ def predict(**kwargs):
     path_model = kwargs.get('path_model', None)
     indice_min = kwargs.get('indice_min', None)
     indice_max = kwargs.get('indice_max', None)
-    
     
     # inicio = min([_ for _ in [datetime.strptime(fecha_inicio_train, "%Y-%m-%d %H:%M:%S"),
     #                           datetime.strptime(fecha_inicio_validation, "%Y-%m-%d %H:%M:%S")]
@@ -85,7 +85,8 @@ def predict(**kwargs):
                                                             futuro=futuro,
                                                             etiquetaX=etiquetaX,
                                                             etiquetaF=etiquetaF,
-                                                            etiquetaT=etiquetaT),
+                                                            etiquetaT=etiquetaT,
+                                                            etiquetaP=etiquetaP),
                                   sampler=sa.Seq2SeqSampler(datasets=dfs_test,
                                                             pasado=pasado,
                                                             futuro=futuro,

@@ -135,7 +135,7 @@ class EncoderDecoderWrapper(nn.Module):
         self.duplicate_teaching = duplicate_teaching
         self.device = device
 
-    def forward(self, x_t: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, teacher: bool = None) -> torch.tensor:
+    def forward(self, x_t: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, p: torch.tensor = None, teacher: bool = None) -> torch.tensor:
         """Propagacion
 
         Inputs:
@@ -143,6 +143,7 @@ class EncoderDecoderWrapper(nn.Module):
             x (torch.tensor): Features pasadas de climaticas y calculadas(N, Lx, Ff in)
             y_t (torch.tensor): Features futuras de estacion y tiempo (N, Ly, Ft in)
             y (torch.tensor): Features futuras climatica (N, Ly, Fout)
+            p (torch.tensor): Features climaticas de prediccion (N, Ly, Fout)
             teacher (bool, optional): Define si se usa el teacher. Defaults to None.
 
         Outputs:
@@ -154,22 +155,27 @@ class EncoderDecoderWrapper(nn.Module):
         decoder_hidden = encoder_hidden  # (N, HID)
         # (N, Ft in) + (N, Fout) = (N,Ft in + Fout)   ### + Fout
         decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), 1)
+
         # elimino la componente extra que me sobra
         y_t = y_t[:, 1:, :]
         if y is not None:
             y = y[:, 1:, :]
-        #print("decoder_input:", decoder_input.shape)
-        outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size),
-                              device=self.device, dtype=torch.float)  # (N, Ly, 1)
-        tf = self.teacher_forcing
+        if p is not None:
+            p = p[:, 1:, :]
+
+        outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, 1)
+        #  tf = self.teacher_forcing 
         for i in range(self.output_sequence_len):
             # (N,1), (N, HID) = decoder((N,Ft in + Fout),(N, HID))
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)
             outputs[:, i, :] = decoder_output
-            if i == self.duplicate_teaching:
-                tf = self.teacher_forcing * 2
-            if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < tf):
-                decoder_input = torch.cat((y_t[:, i, :], y[:, i, :]), axis=1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
-            else:
-                decoder_input = torch.cat((y_t[:, i, :], decoder_output), 1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
+            # if i == self.duplicate_teaching:
+            #    tf = self.teacher_forcing * 2
+            # if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < tf):
+            #    decoder_input = torch.cat((y_t[:, i, :], y[:, i, :]), axis=1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
+            # else:
+            #    decoder_input = torch.cat((y_t[:, i, :], decoder_output), 1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
+            
+            # asignacion de P
+            decoder_input = torch.cat((y_t[:, i, :], p[:, i, :]), axis=1)  # (N,Ft in) + (N, Fout) = (N,Ft in + Fout)
         return outputs  # (N, Ly, Fouts)

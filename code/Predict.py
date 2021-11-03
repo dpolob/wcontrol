@@ -160,14 +160,15 @@ def zmodel(file):
     
     PASADO = cfg.pasado
     FUTURO = cfg.futuro
-    PREDICCION = cfg.prediccion
+    PREDICCION = list(cfg.prediccion)
     device = 'cuda' if cfg.zmodel.model.use_cuda else 'cpu'        
     FECHA_INICIO_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_inicio, "%Y-%m-%d %H:%M:%S")
     FECHA_FIN_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_fin, "%Y-%m-%d %H:%M:%S")
     FEATURES = list(cfg.zmodel.model.encoder.features)
     DEFINIDAS = list(cfg.zmodel.model.decoder.features)
+    NWP = list(cfg.zmodel.model.decoder.nwp)
     EPOCHS = cfg.zmodel.model.epochs
-
+    print(NWP)
     if not cfg.zmodel.dataloaders.test.enable:
         print("El archivo no tiene definido dataset para test")
         exit()
@@ -189,6 +190,7 @@ def zmodel(file):
       'etiquetaX': PREDICCION,
       'etiquetaF': FEATURES,
       'etiquetaT': DEFINIDAS,
+      'etiquetaP': NWP,
       'name': name,
       'model_name': cfg.zmodel.model.name,
       'rnn_num_layers': cfg.zmodel.model.encoder.rnn_num_layers,
@@ -212,7 +214,7 @@ def zmodel(file):
     predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)), 'Ypred': np.zeros(len(y_pred))}).astype('object')
     #print(predicciones)
     import copy
-    for it, (_, _, _, y) in enumerate(tqdm((test_dataloader))):
+    for it, (_, _, _, y, _) in enumerate(tqdm((test_dataloader))):
         y_cp = copy.deepcopy(y)
         del y
         predicciones.iloc[it].loc['Y'] = list(np.squeeze(y_cp[:, 1:, :].numpy()))
