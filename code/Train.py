@@ -39,7 +39,7 @@ def zmodel(file):
     
        
     name = cfg["experiment"]
-    cfg = AttrDict(parser.parser_experiment(cfg, name))
+    cfg = AttrDict(parser(name, _)(cfg))
     with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
         metadata = yaml.safe_load(handler)
     print("Leidos metadatos del dataset")

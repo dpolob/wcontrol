@@ -30,9 +30,8 @@ def zmodel(file):
         exit()
     
     name = cfg["experiment"]
-    cfg = AttrDict(parser.parser_experiment(cfg, name)) # parser de {{experiment}}
+    cfg = AttrDict(parser(name, _)(cfg))
     dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.zmodel.estaciones), 
-                                           escaladores = cfg.preprocesado.escaladores, 
                                            outliers = cfg.preprocesado.outliers,
                                            proveedor= cfg.zmodel.proveedor[0])
     output = Path(cfg.paths.zmodel.dataset)
@@ -66,7 +65,7 @@ def pmodel(file):
     outliers = cfg.preprocesado.outliers
     
     df, metadata = generarvariablesPmodel(estacion=list(cfg.pmodel.estaciones)[0], 
-                                estaciones=cfg.zmodel.estaciones, escaladores=cfg.preprocesado.escaladores,
+                                estaciones=cfg.zmodel.estaciones, 
                                 outliers= cfg.preprocesado.outliers, cfg=cfg)
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     

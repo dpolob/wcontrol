@@ -16,9 +16,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from common.utils.datasets import experimento1dataset as ds
-from common.utils.datasets import experimento1sampler as sa
-from common.utils.trainers import experimento1trainer as tr
+from common.utils.datasets import dataset_seq2seq as ds
+from common.utils.datasets import sampler_seq2seq as sa
+from common.utils.trainers import trainerSeq2Seq as tr
 from common.utils.loss_functions import lossfunction as lf
 
 
