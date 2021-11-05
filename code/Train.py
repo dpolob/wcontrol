@@ -65,6 +65,7 @@ def zmodel(file):
     FEATURES = list(cfg.zmodel.model.encoder.features)
     DEFINIDAS = list(cfg.zmodel.model.decoder.features)
     NWP = list(cfg.zmodel.model.decoder.nwp)
+    OUTPUT_SIZE = len(PREDICCION)
     
     TRAIN = cfg.zmodel.dataloaders.train.enable
     if TRAIN:
@@ -169,7 +170,7 @@ def zmodel(file):
 
     model = module.EncoderDecoderWrapper(encoder=encoder,
                                     decoder_cell=decoder,
-                                    output_size=1,
+                                    output_size=OUTPUT_SIZE,
                                     output_sequence_len=FUTURO,
                                     teacher_forcing=cfg.zmodel.model.teacher_forcing,
                                     duplicate_teaching=cfg.zmodel.model.duplicate_teaching,

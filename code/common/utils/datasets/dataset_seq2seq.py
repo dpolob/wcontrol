@@ -13,6 +13,10 @@ class Seq2SeqDataset(Dataset):
     """
     
     REHACER ENTERO
+    etiquetaX es la prediccion 8temperatura, hr, precipitacion
+    etiquetaP es la del proveedor de NWP
+    etiquetaF son las features
+    etiquetaT son las temporales
         
     """
     def __init__(self, datasets: list, pasado: int, futuro: int, etiquetaX: list=None, etiquetaF: list=None, etiquetaT: list=None, etiquetaP: list=None) -> tuple:
