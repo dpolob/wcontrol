@@ -156,12 +156,6 @@ class TorchTrainer():
                 self.scheduler.step()
         
     def _loss_batch(self, Xt, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
-        #if type(xb) is list:
-        #    xb = [xbi.to(self.device) for xbi in xb]
-        #else:
-        #    xb = xb.to(self.device)
-        #yb = yb.to(self.device)
-
         Xt = Xt.to(self.device)
         X = X.to(self.device)
         Yt = Yt.to(self.device)

@@ -10,8 +10,15 @@
 
 # Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
 
+Dataset convendria serparar la etiquetaT y etiquetaF
+#seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
 
-seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
+
+ Revisar esto en trainer._loss_batch       
+        if pass_y:
+            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+        else:
+            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
 
 # tqdm en escalado del generarvariablesZmodel
 
