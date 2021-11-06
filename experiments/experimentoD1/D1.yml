@@ -40,41 +40,7 @@ preprocesado:
       min: 0
       max: 104 # desde 2010
       tol: 0
-  escaladores:
-    temperatura:
-      min: -7
-      max: 40
-    hr:
-      min: 7
-      max: 100
-    precipitacion:
-      min: 0
-      max: 12
-    integraltermica:
-      min: 3.2111111111111112
-      max: 29.562500000000004
-    integralrain:
-      max: 0.4070555555555605 
-      min: 0.0
-    indiceangtrom:
-      max: 0.3303727840993653 
-      min: 0.0
-    indicemartonne: 
-      max: 0.11818565146677915 
-      min: 0.0
-    indicelang: 
-      max: 0.024207569880968307 
-      min: 0.0
-    tempmacd:
-      max: 3.2617920343029727 
-      min: -3.143530837785094
-    hrmacd: 
-      max: 14.255536559348446
-      min: -14.9275377206977
-    precipitacionmacd: 
-      max: 0.3991766111732638 
-      min: -0.22140131270517033
-
+ 
 zmodel:    
   estaciones:
     - nombre: "Villar de Torre"
@@ -110,61 +76,61 @@ zmodel:
       longitud: -2.7242639
       latitud: 42.3925069
       altitud: 523
-    # - nombre: "Arenzana de Abajo"
-    #   id: 2082
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/2082.csv"
-    #   longitud: -2.7357180
-    #   latitud: 42.3828770
-    #   altitud: 510            
-    # - nombre: "Badaran-El Hombro"
-    #   id: 2684
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/2684.csv"
-    #   longitud: -2.8634773
-    #   latitud: 42.3721760
-    #   altitud: 751
-    # - nombre: "Somalcampo"
-    #   id: 2698
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/2698.csv"
-    #   longitud: -2.8912790
-    #   latitud: 42.3905560
-    #   altitud: 815
-    # - nombre: "Villaverde"
-    #   id: 2706
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/2706.csv"
-    #   longitud: -2.7978570
-    #   latitud: 42.3320800
-    #   altitud: 782
-    # - nombre: "Cordovin"
-    #   id: 2966
-    #   format: "%Y-%m-%d %H:%M:%S"
-    #   metricas:
-    #     - temperatura
-    #     - hr
-    #     - precipitacion
-    #   ruta: "/home/diego/weather-control/data/processed/2966.csv"
-    #   longitud: -2.8147230
-    #   latitud: 42.3867790
-    #   altitud: 594
+    - nombre: "Arenzana de Abajo"
+      id: 2082
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2082.csv"
+      longitud: -2.7357180
+      latitud: 42.3828770
+      altitud: 510            
+    - nombre: "Badaran-El Hombro"
+      id: 2684
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2684.csv"
+      longitud: -2.8634773
+      latitud: 42.3721760
+      altitud: 751
+    - nombre: "Somalcampo"
+      id: 2698
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2698.csv"
+      longitud: -2.8912790
+      latitud: 42.3905560
+      altitud: 815
+    - nombre: "Villaverde"
+      id: 2706
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2706.csv"
+      longitud: -2.7978570
+      latitud: 42.3320800
+      altitud: 782
+    - nombre: "Cordovin"
+      id: 2966
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2966.csv"
+      longitud: -2.8147230
+      latitud: 42.3867790
+      altitud: 594
   proveedor:
     - nombre: "Nájera"
       id: 1289

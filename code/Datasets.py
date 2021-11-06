@@ -6,7 +6,7 @@ from pathlib import Path
 from attrdict import AttrDict
 from colorama import Fore, Style
 
-import common.utils.parser as parser
+from common.utils.parser import parser
 #from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 
@@ -30,7 +30,7 @@ def zmodel(file):
         exit()
     
     name = cfg["experiment"]
-    cfg = AttrDict(parser(name, _)(cfg))
+    cfg = AttrDict(parser(name, None)(cfg))
     dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.zmodel.estaciones), 
                                            outliers = cfg.preprocesado.outliers,
                                            proveedor= cfg.zmodel.proveedor[0])

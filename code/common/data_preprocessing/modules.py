@@ -135,7 +135,6 @@ def check_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: list=No
             if any(df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100)):
                 tqdm.write(f"Valores de {metrica} por debajo el valor de {outlier['min']}" + FAIL)
                 return False
-    tqdm.write(OK)
     return True
 
 def check_longitud(df: pd.DataFrame=None, longitud: int=None) -> bool:
@@ -161,8 +160,6 @@ def quitar_nans(df: pd.DataFrame=None, how: str='mean') -> pd.DataFrame:
     Returns:
         pd.DataFrame: dataframes sin NaN
     """
-    tqdm.write(f"{df.isna().sum().sum()}", end='')
-       
     if how == 'IterativeImputer':
         df = temporales(df)
         if not no_NaNs(df):
@@ -179,8 +176,6 @@ def quitar_nans(df: pd.DataFrame=None, how: str='mean') -> pd.DataFrame:
     if how == 'mean': 
         df = df.fillna(df.mean()) 
     
-    tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
-    tqdm.write("\t" + OK)
     return df
 
 def variables_bioclimaticas(df: pd.DataFrame=None) -> tuple:
@@ -298,8 +293,14 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
             continue
         
         tqdm.write(f"\tEliminando NaNs...", end='')
+        tqdm.write(f"{df.isna().sum().sum()}", end='')
         df = quitar_nans(df)
-        tqdm.write(OK)
+        tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
+        if df.isna().sum().sum() > 0:
+            tqdm.write("Se han generado NANs!!" + FAIL)
+            exit()
+        else:
+            tqdm.write(OK)
        
         tqdm.write(f"\tAgregar predicciones", end='')
         nwp = pd.read_csv(proveedor.ruta, sep=',', decimal='.', header='infer')
@@ -327,7 +328,6 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
        
         tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
         df = temporales(df)
-        tqdm.write(OK)
         if no_NaNs(df):
             tqdm.write(OK)
         else:
@@ -375,52 +375,71 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
         
     tqdm.write(OK)
     
-    tqdm.write(f"\tAplicando escalado:", end='')
+    tqdm.write(f"\tAplicando PowerTransformer", end='')
+    rain_hr = pd.DataFrame()
+    rain_hr['precipitacion'] = pd.concat([_['precipitacion'] for _ in dfs], axis=0)
+    rain_hr['nwp_precipitacion'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
+    rain_hr['hr'] = pd.concat([_['hr'] for _ in dfs], axis=0)
+    rain_hr['nwp_hr'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
+    pt = PowerTransformer(method='yeo-johnson', standardize=False)
+    pt.fit(rain_hr)
+    for df in dfs:
+        df[pt.feature_names_in_] = pt.transform(df[pt.feature_names_in_])
+        if not no_NaNs(df):
+            tqdm.write("Se han generado NANs!!" + FAIL)
+            exit()
+    tqdm.write(OK)
     
-        # # escalar datos
-        # pt = PowerTransformer(method='yeo-johnson', standardize=True)
-        # df = pd.DataFrame(pt.fit_transform(df), columns=df.columns, index=df.index)
-        # if no_NaNs(df):
-        #     tqdm.write(OK)
-        # else:
-        #     tqdm.write("Se han generado NANs!!" + FAIL)
-        #     exit()     
-    parametros = dict()
-    for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
-        parametros[metrica] = dict()
-        parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
-        parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))
+    # tqdm.write(f"\tAplicando escalado:", end='')
+    
+    #     # # escalar datos
+    #     # pt = PowerTransformer(method='yeo-johnson', standardize=True)
+    #     # df = pd.DataFrame(pt.fit_transform(df), columns=df.columns, index=df.index)
+    #     # if no_NaNs(df):
+    #     #     tqdm.write(OK)
+    #     # else:
+    #     #     tqdm.write("Se han generado NANs!!" + FAIL)
+    #     #     exit()     
+    # parametros = dict()
+    # for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
+    #     parametros[metrica] = dict()
+    #     parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
+    #     parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))
         
-        if metrica == 'nwp_temperatura':
-            parametros[metrica]['max'] = parametros['temperatura']['max']
-            parametros[metrica]['min'] = parametros['temperatura']['min']
-        if metrica == 'nwp_hr':
-            parametros[metrica]['max'] = parametros['hr']['max']
-            parametros[metrica]['min'] = parametros['hr']['min']
-        if metrica == 'nwp_precipitacion':
-            parametros[metrica]['max'] = parametros['precipitacion']['max']
-            parametros[metrica]['min'] = parametros['precipitacion']['min']
+    #     if metrica == 'nwp_temperatura':
+    #         parametros[metrica]['max'] = parametros['temperatura']['max']
+    #         parametros[metrica]['min'] = parametros['temperatura']['min']
+    #     if metrica == 'nwp_hr':
+    #         parametros[metrica]['max'] = parametros['hr']['max']
+    #         parametros[metrica]['min'] = parametros['hr']['min']
+    #     if metrica == 'nwp_precipitacion':
+    #         parametros[metrica]['max'] = parametros['precipitacion']['max']
+    #         parametros[metrica]['min'] = parametros['precipitacion']['min']
             
-        scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
-        for df in dfs:
-            df[metrica] = scaler.transform(np.array(df[metrica].values))
-            if not no_NaNs(df):
-                tqdm.write("Se han generado NANs!!" + FAIL)
-                exit()
+    #     scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
+    #     for df in dfs:
+    #         df[metrica] = scaler.transform(np.array(df[metrica].values))
+    #         if not no_NaNs(df):
+    #             tqdm.write("Se han generado NANs!!" + FAIL)
+    #             exit()
   
     tqdm.write(f"Generando metadatos ", end='')
     metadata = {}
-    metadata["longitud"] = len(dfs)
-    metadata["datasets"] = {}
-    metadata["datasets"]["nombres"] = dfs_nombres
-    metadata["datasets"]["longitud"] = [len(_) for _ in dfs]
-    metadata["CdG"] = [float(_) for _ in list(cdg)]
-    metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
-    metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
-    metadata['indice_min'] = min([_.index.min() for _ in dfs])
-    metadata['indice_max'] = max([_.index.max() for _ in dfs])
-    metadata['escaladores'] = {}
-    metadata['escaladores'] = parametros
+    # metadata["longitud"] = len(dfs)
+    # metadata["datasets"] = {}
+    # metadata["datasets"]["nombres"] = dfs_nombres
+    # metadata["datasets"]["longitud"] = [len(_) for _ in dfs]
+    # metadata["CdG"] = [float(_) for _ in list(cdg)]
+    # metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
+    # metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
+    # metadata['indice_min'] = min([_.index.min() for _ in dfs])
+    # metadata['indice_max'] = max([_.index.max() for _ in dfs])
+    # metadata['escaladores'] = {}
+    # metadata['escaladores'] = parametros
+    # metadata['powertransformer'] = {}
+    # metadata['powertransformer']['params'] = pt.get_params(deep=True)
+    # metadata['powertransformer']['lambdas_'] = pt.lambdas_.tolist()
+    
     tqdm.write(OK)
     
     return (dfs, metadata)

@@ -21,6 +21,7 @@ class parser():
 
     def __parser_epoch(self, cfg: dict) -> dict:
         """Parsea la cadena {{epoch}} de los archivos de configuracion yml"""
+        
         if isinstance(self.epoch, int):
             self.epoch = str(self.epoch)  # epoch es un numero
         for key in cfg.keys():
@@ -32,5 +33,6 @@ class parser():
     
     def __call__(self, cfg: dict) -> dict:
         cfg = self.__parser_experiment(cfg)
-        cfg = self.__parser_epoch(cfg)
+        if self.epoch is not None:
+            cfg = self.__parser_epoch(cfg)
         return cfg
