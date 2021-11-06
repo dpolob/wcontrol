@@ -375,71 +375,58 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
         
     tqdm.write(OK)
     
-    tqdm.write(f"\tAplicando PowerTransformer", end='')
-    rain_hr = pd.DataFrame()
-    rain_hr['precipitacion'] = pd.concat([_['precipitacion'] for _ in dfs], axis=0)
-    rain_hr['nwp_precipitacion'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    rain_hr['hr'] = pd.concat([_['hr'] for _ in dfs], axis=0)
-    rain_hr['nwp_hr'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    pt = PowerTransformer(method='yeo-johnson', standardize=False)
-    pt.fit(rain_hr)
-    for df in dfs:
-        df[pt.feature_names_in_] = pt.transform(df[pt.feature_names_in_])
-        if not no_NaNs(df):
-            tqdm.write("Se han generado NANs!!" + FAIL)
-            exit()
-    tqdm.write(OK)
+    # tqdm.write(f"\tAplicando PowerTransformer", end='')
+    # rain_hr = pd.DataFrame()
+    # rain_hr['precipitacion'] = pd.concat([_['precipitacion'] for _ in dfs], axis=0)
+    # rain_hr['nwp_precipitacion'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
+    # rain_hr['hr'] = pd.concat([_['hr'] for _ in dfs], axis=0)
+    # rain_hr['nwp_hr'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
+    # pt = PowerTransformer(method='yeo-johnson', standardize=False)
+    # pt.fit(rain_hr)
+    # for df in dfs:
+    #     df[pt.feature_names_in_] = pt.transform(df[pt.feature_names_in_])
+    #     if not no_NaNs(df):
+    #         tqdm.write("Se han generado NANs!!" + FAIL)
+    #         exit()
+    # tqdm.write(OK)
     
-    # tqdm.write(f"\tAplicando escalado:", end='')
-    
-    #     # # escalar datos
-    #     # pt = PowerTransformer(method='yeo-johnson', standardize=True)
-    #     # df = pd.DataFrame(pt.fit_transform(df), columns=df.columns, index=df.index)
-    #     # if no_NaNs(df):
-    #     #     tqdm.write(OK)
-    #     # else:
-    #     #     tqdm.write("Se han generado NANs!!" + FAIL)
-    #     #     exit()     
-    # parametros = dict()
-    # for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
-    #     parametros[metrica] = dict()
-    #     parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
-    #     parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))
+    tqdm.write(f"\tAplicando escalado:", end='')
+    parametros = dict()
+    for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
+        parametros[metrica] = dict()
+        parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
+        parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))
         
-    #     if metrica == 'nwp_temperatura':
-    #         parametros[metrica]['max'] = parametros['temperatura']['max']
-    #         parametros[metrica]['min'] = parametros['temperatura']['min']
-    #     if metrica == 'nwp_hr':
-    #         parametros[metrica]['max'] = parametros['hr']['max']
-    #         parametros[metrica]['min'] = parametros['hr']['min']
-    #     if metrica == 'nwp_precipitacion':
-    #         parametros[metrica]['max'] = parametros['precipitacion']['max']
-    #         parametros[metrica]['min'] = parametros['precipitacion']['min']
+        if metrica == 'nwp_temperatura':
+            parametros[metrica]['max'] = parametros['temperatura']['max']
+            parametros[metrica]['min'] = parametros['temperatura']['min']
+        if metrica == 'nwp_hr':
+            parametros[metrica]['max'] = parametros['hr']['max']
+            parametros[metrica]['min'] = parametros['hr']['min']
+        if metrica == 'nwp_precipitacion':
+            parametros[metrica]['max'] = parametros['precipitacion']['max']
+            parametros[metrica]['min'] = parametros['precipitacion']['min']
             
-    #     scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
-    #     for df in dfs:
-    #         df[metrica] = scaler.transform(np.array(df[metrica].values))
-    #         if not no_NaNs(df):
-    #             tqdm.write("Se han generado NANs!!" + FAIL)
-    #             exit()
+        scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
+        for df in dfs:
+            df[metrica] = scaler.transform(np.array(df[metrica].values))
+            if not no_NaNs(df):
+                tqdm.write("Se han generado NANs!!" + FAIL)
+                exit()
   
     tqdm.write(f"Generando metadatos ", end='')
     metadata = {}
-    # metadata["longitud"] = len(dfs)
-    # metadata["datasets"] = {}
-    # metadata["datasets"]["nombres"] = dfs_nombres
-    # metadata["datasets"]["longitud"] = [len(_) for _ in dfs]
-    # metadata["CdG"] = [float(_) for _ in list(cdg)]
-    # metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
-    # metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
-    # metadata['indice_min'] = min([_.index.min() for _ in dfs])
-    # metadata['indice_max'] = max([_.index.max() for _ in dfs])
-    # metadata['escaladores'] = {}
-    # metadata['escaladores'] = parametros
-    # metadata['powertransformer'] = {}
-    # metadata['powertransformer']['params'] = pt.get_params(deep=True)
-    # metadata['powertransformer']['lambdas_'] = pt.lambdas_.tolist()
-    
+    metadata["longitud"] = len(dfs)
+    metadata["datasets"] = {}
+    metadata["datasets"]["nombres"] = dfs_nombres
+    metadata["datasets"]["longitud"] = [len(_) for _ in dfs]
+    metadata["CdG"] = [float(_) for _ in list(cdg)]
+    metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
+    metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
+    metadata['indice_min'] = min([_.index.min() for _ in dfs])
+    metadata['indice_max'] = max([_.index.max() for _ in dfs])
+    metadata['escaladores'] = {}
+    metadata['escaladores'] = parametros
     tqdm.write(OK)
     
     return (dfs, metadata)
