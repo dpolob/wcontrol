@@ -21,6 +21,10 @@ from common.utils.loss_functions import lossfunction as lf
 #from models.seq2seq import experimento1model as md
 import importlib
 
+   
+SI = Fore.GREEN + "SI" + Style.RESET_ALL
+NO = Fore.RED + "NO" + Style.RESET_ALL
+
 @click.group()
 def cli():
     pass
@@ -61,12 +65,11 @@ def zmodel(file):
     FUTURO = cfg.futuro
     EPOCHS = cfg.zmodel.model.epochs
     kwargs_loss = cfg.zmodel.model.loss_function
-    PREDICCION = list(cfg.prediccion)
-    FEATURES = list(cfg.zmodel.model.encoder.features)
-    DEFINIDAS = list(cfg.zmodel.model.decoder.features)
-    NWP = list(cfg.zmodel.model.decoder.nwp)
-    OUTPUT_SIZE = len(PREDICCION)
-    
+    Fout = list(cfg.prediccion)  # etiquetas a predecir len = Fout
+    Ff = list(cfg.zmodel.model.encoder.features)  # etiquetas para encoder len = Ff
+    Ft = list(cfg.zmodel.model.decoder.features)  # etiquetas para decoder len = Ft
+    Fnwp = list(cfg.zmodel.model.decoder.nwp)  # etiquetas de los modelos nwp len = Fnwp
+     
     TRAIN = cfg.zmodel.dataloaders.train.enable
     if TRAIN:
         FECHA_INICIO_TRAIN = datetime.strptime(cfg.zmodel.dataloaders.train.fecha_inicio, "%Y-%m-%d %H:%M:%S")
@@ -83,9 +86,7 @@ def zmodel(file):
         FECHA_INICIO_VALID = None
         FECHA_FIN_VALID = None
         
-   
-    SI = Fore.GREEN + "SI" + Style.RESET_ALL
-    NO = Fore.RED + "NO" + Style.RESET_ALL
+
     print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
     
     fecha_inicio = datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S")
@@ -113,10 +114,10 @@ def zmodel(file):
         train_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_train,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
-                                                                etiquetaX=PREDICCION,
-                                                                etiquetaF=FEATURES,
-                                                                etiquetaT=DEFINIDAS,
-                                                                etiquetaP=NWP),
+                                                                etiquetaX=Fout,
+                                                                etiquetaF=Ff,
+                                                                etiquetaT=Ft,
+                                                                etiquetaP=Fnwp),
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_train,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
@@ -132,10 +133,10 @@ def zmodel(file):
         valid_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_valid,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
-                                                                etiquetaX=PREDICCION,
-                                                                etiquetaF=FEATURES,
-                                                                etiquetaT=DEFINIDAS,
-                                                                etiquetaP=NWP),
+                                                                etiquetaX=Fout,
+                                                                etiquetaF=Ff,
+                                                                etiquetaT=Ft,
+                                                                etiquetaP=Fnwp),
                                       sampler=sa.Seq2SeqSampler(datasets=dfs_valid,
                                                                 pasado=PASADO,
                                                                 futuro=FUTURO,
@@ -155,23 +156,23 @@ def zmodel(file):
     module = importlib.import_module(f"models.seq2seq.{cfg.zmodel.model.name}")
     
     encoder = module.RNNEncoder(rnn_num_layers=cfg.zmodel.model.encoder.rnn_num_layers,
-                            input_feature_len=len(FEATURES) + 1,
-                            sequence_len=PASADO + 1,
-                            hidden_size=cfg.zmodel.model.encoder.hidden_size,
-                            bidirectional=cfg.zmodel.model.encoder.bidirectional,
-                            device=device,
-                            rnn_dropout=cfg.zmodel.model.encoder.rnn_dropout)
+                                input_feature_len=len(Ff),
+                                sequence_len=PASADO + 1, # +1 porque tomamos tiempo0
+                                hidden_size=cfg.zmodel.model.encoder.hidden_size,
+                                bidirectional=cfg.zmodel.model.encoder.bidirectional,
+                                device=device,
+                                rnn_dropout=cfg.zmodel.model.encoder.rnn_dropout)
     encoder = encoder.to(device)
 
-    decoder = module.DecoderCell(input_feature_len=len(DEFINIDAS) + 1,
+    decoder = module.DecoderCell(input_feature_len=len(Ft) + len(Fnwp),
                                  hidden_size=cfg.zmodel.model.decoder.hidden_size,
-                                 output_size=len(PREDICCION),
+                                 output_size=len(Fout),
                                  dropout=cfg.zmodel.model.decoder.dropout)
     decoder = decoder.to(device)
 
     model = module.EncoderDecoderWrapper(encoder=encoder,
                                     decoder_cell=decoder,
-                                    output_size=OUTPUT_SIZE,
+                                    output_size=len(Fout),
                                     output_sequence_len=FUTURO,
                                     teacher_forcing=cfg.zmodel.model.teacher_forcing,
                                     duplicate_teaching=cfg.zmodel.model.duplicate_teaching,

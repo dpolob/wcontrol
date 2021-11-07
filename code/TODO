@@ -24,7 +24,18 @@ Dataset convendria serparar la etiquetaT y etiquetaF
 
 Cambiar nombre a modules (es mu feo)
 
+Quitar todo lo de teacher forcing y duplicate teacher forcing
 
+
+Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout)
+Algunos argumentos de entrada de  model = module.EncoderDecoderWrapper(encoder=encoder,
+                                    decoder_cell=decoder,
+                                    output_size=OUTPUT_SIZE,
+                                    output_sequence_len=FUTURO,
+                                    teacher_forcing=cfg.zmodel.model.teacher_forcing,
+                                    duplicate_teaching=cfg.zmodel.model.duplicate_teaching,
+                                    device=device)
+se pueden obtener del encoder y el decoder
 
 # def quitar_nans(df: pd.DataFrame=None) -> pd.DataFrame:
 #     # chequear que las variables ciclicas de fecha estan y si no es asi crearlas
