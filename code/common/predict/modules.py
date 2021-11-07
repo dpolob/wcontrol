@@ -33,10 +33,10 @@ def predict(**kwargs):
     fecha_fin_test = kwargs.get('fecha_fin_test', None)
     pasado = kwargs.get('pasado', None)
     futuro = kwargs.get('futuro', None)
-    etiquetaX = kwargs.get('etiquetaX', None)
-    etiquetaF = kwargs.get('etiquetaF', None)
-    etiquetaT = kwargs.get('etiquetaT', None)
-    etiquetaP = kwargs.get('etiquetaP', None)
+    Fout = kwargs.get('etiquetaX', None)
+    Ff = kwargs.get('etiquetaF', None)
+    Ft = kwargs.get('etiquetaT', None)
+    Fnwp = kwargs.get('etiquetaP', None)
     name = kwargs.get('name', None)
     model_name = kwargs.get('model_name', None)
     rnn_num_layers = kwargs.get('rnn_num_layers', None)
@@ -83,10 +83,10 @@ def predict(**kwargs):
     test_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_test,
                                                             pasado=pasado,
                                                             futuro=futuro,
-                                                            etiquetaX=etiquetaX,
-                                                            etiquetaF=etiquetaF,
-                                                            etiquetaT=etiquetaT,
-                                                            etiquetaP=etiquetaP),
+                                                            etiquetaX=Fout,
+                                                            etiquetaF=Ff,
+                                                            etiquetaT=Ft,
+                                                            etiquetaP=Fnwp),
                                   sampler=sa.Seq2SeqSampler(datasets=dfs_test,
                                                             pasado=pasado,
                                                             futuro=futuro,
@@ -98,7 +98,7 @@ def predict(**kwargs):
 
     module = importlib.import_module(f"models.seq2seq.{model_name}")
     encoder = module.RNNEncoder(rnn_num_layers=rnn_num_layers,
-                            input_feature_len=len(etiquetaF) + 1,
+                            input_feature_len=len(Ff),
                             sequence_len=pasado + 1,
                             hidden_size=encoder_hidden_size,
                             bidirectional=encoder_bidirectional,
@@ -106,12 +106,15 @@ def predict(**kwargs):
                             rnn_dropout=encoder_rnn_dropout)
     encoder = encoder.to(device)
 
-    decoder = module.DecoderCell(input_feature_len=len(etiquetaT) + 1,
+    decoder = module.DecoderCell(input_feature_len=len(Ft) + len(Fnwp),
                             hidden_size=decoder_hidden_size,
+                            output_size=len(Fout),
                             dropout=decoder_dropout)
     decoder = decoder.to(device)
+
     encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=1e-4, weight_decay=1e-3)
     decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=1e-4, weight_decay=1e-3)
+
     if model_scheduler:
         encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=1e-3, steps_per_epoch=len(test_dataloader), epochs=epochs)
         decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=1e-3, steps_per_epoch=len(test_dataloader), epochs=epochs)
@@ -136,5 +139,5 @@ def predict(**kwargs):
         trainer._load_best_checkpoint()
     else:
         trainer._load_checkpoint(epoch=use_checkpoint, only_model=True)
-    y_pred = trainer.predict(test_dataloader)  # y_pred (len(test), N, L, F(d)out) (4000,1,72,1)
+    y_pred = trainer.predict(test_dataloader)  # y_pred: (len(test), N, L, Fout)
     return y_pred, test_dataloader
