@@ -155,31 +155,35 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xt, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
+    def _loss_batch(self, Xt, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False, weights: list = None):
         Xt = Xt.to(self.device)
         X = X.to(self.device)
         Yt = Yt.to(self.device)
         Y = Y.to(self.device)
         P = P.to(self.device)
         
+        # la salida es (N, Ly, Fout)
         if pass_y:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+            y_pred = self.model(x_t=Xt, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         else:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
-
-        loss = self.loss_fn(y_pred, Y[:, 1:, :])  # debo quitar la componente 0
+            y_pred = self.model(x_t=Xt, x=X, y_t=Yt, y=None, p=P, teacher=teacher)
+        # definir la perdida para cada componente
+        # debo quitar la componente 0 de Y
+        losses = [self.loss_fn(y_pred[:, :, _], Y[:, 1:, _]) for _ in range(y_pred.shape[2])]  # y_pred.shape[2] = Fout
+        if weights is not None and isinstance(weights, list):
+            losses = losses * weights
+        loss = torch.sum(torch.stack(losses))  # un solo numero
+               
         if additional_metrics is not None:
             additional_metrics = [fn(y_pred, Y[:, 1:, :]) for name, fn in additional_metrics]
+        
         if optimize:
             loss.backward()
             self._step_optim()
         loss_value = loss.item()
-        del Xt
-        del X
-        del Yt
-        del Y
-        del P
-        del loss
+        
+        del (Xt, X, Yt, Y, P, loss, losses)
+     
         if additional_metrics is not None:
             if return_ypred:
                 return loss_value, additional_metrics, y_pred
@@ -197,7 +201,7 @@ class TorchTrainer():
         loss_values = []
         with torch.no_grad():
             for Xt, X, Yt, Y, P in eval_bar:
-                loss_value = self._loss_batch(Xt, X, Yt, Y, P, False, False, False)
+                loss_value = self._loss_batch(Xt, X, Yt, Y, P, teacher=False, optimize=False, pass_y=False)
                 loss_values.append(loss_value)
                 # if len(loss_values[0]) > 1:
                 #     loss_value = np.mean([lv[0] for lv in loss_values])
@@ -294,12 +298,11 @@ class TorchTrainer():
                     training_losses.append(running_loss / 100)
                     running_loss = 0
                     # additional_running_loss = [0 for _ in self.additional_metric_fns]
-                if plot and it % 1000 == 999:
-                    fig =plt.figure(figsize=(26,12))
-                    plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
-                    plt.plot(torch.mean(y_pred, dim=0).cpu().detach().numpy().reshape(-1,1), 'r')
-                    self.writer.add_figure('data/test/resultados', fig, i * len(train_dataloader) + it)
-                    #tqdm.write("Plot en{}".format(i * len(train_dataloader) + it))
+                # if plot and it % 1000 == 999:
+                    # fig =plt.figure(figsize=(26,12))
+                    # plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
+                    # plt.plot(torch.mean(y_pred, dim=0).cpu().detach().numpy().reshape(-1,1), 'r')
+                    # self.writer.add_figure('data/test/resultados', fig, i * len(train_dataloader) + it)
 
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()

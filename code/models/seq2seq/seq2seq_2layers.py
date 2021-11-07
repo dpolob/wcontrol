@@ -154,7 +154,7 @@ class EncoderDecoderWrapper(nn.Module):
 
         decoder_hidden = encoder_hidden  # (N, HID)
         # (N, Ft in) + (N, Fout) = (N,Ft in + Fout)   ### + Fout
-        decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), 1)
+        decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), axis=1)
 
         # elimino la componente extra que me sobra
         y_t = y_t[:, 1:, :]
@@ -163,12 +163,12 @@ class EncoderDecoderWrapper(nn.Module):
         if p is not None:
             p = p[:, 1:, :]
 
-        outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, 1)
+        outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout)
         #  tf = self.teacher_forcing 
         for i in range(self.output_sequence_len):
             # (N,1), (N, HID) = decoder((N,Ft in + Fout),(N, HID))
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)
-            outputs[:, i, :] = decoder_output
+            outputs[:, i, :] = decoder_output  # la salida siempre es decoder_output, no es teacher o P
             # if i == self.duplicate_teaching:
             #    tf = self.teacher_forcing * 2
             # if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < tf):

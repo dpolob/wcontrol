@@ -168,7 +168,7 @@ zmodel:
        'integraltermica', 'integralrain',
        'indiceangtrom', 'indicemartonne', 'indicelang', 'tempmacd', 'hrmacd',
        'precipitacionmacd', 
-       'dia', 'mes', 'hour', 'distancia', 'altitud']
+       'dia', 'mes', 'hora', 'distancia', 'altitud']
     decoder:
       lr: 0.025
       hidden_size: 100
@@ -176,7 +176,7 @@ zmodel:
       features:
       - dia
       - mes
-      - hour
+      - hora
       - distancia
       - altitud
       nwp:

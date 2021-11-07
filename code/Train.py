@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-import common.utils.parser as parser
+from common.utils.parser import parser
 from common.utils.datasets import dataset_seq2seq as ds
 from common.utils.datasets import sampler_seq2seq as sa
 from common.utils.trainers import trainerSeq2Seq as tr
@@ -39,7 +39,7 @@ def zmodel(file):
     
        
     name = cfg["experiment"]
-    cfg = AttrDict(parser(name, _)(cfg))
+    cfg = AttrDict(parser(name, None)(cfg))
     with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
         metadata = yaml.safe_load(handler)
     print("Leidos metadatos del dataset")
