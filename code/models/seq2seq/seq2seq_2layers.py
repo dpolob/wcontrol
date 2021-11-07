@@ -76,11 +76,12 @@ class RNNEncoder(nn.Module):
 class DecoderCell(nn.Module):
     """Define una celda GRU"""
 
-    def __init__(self, input_feature_len: int, hidden_size: int, dropout: float = 0.2) -> None:
+    def __init__(self, input_feature_len: int, hidden_size: int, output_size: int=None, dropout: float = 0.2) -> None:
         """
         Input:
             input_feature_len (int): Numero de features de entrada (Ft in)
             hidden_size (int): Numero de representaciones internas de la red (HID) 
+            output_size (int): Numero de variables de salida (Fout)
             dropout (float): valor de dropout para apagar la capa hidden 
         """
 
@@ -91,7 +92,7 @@ class DecoderCell(nn.Module):
         )
         self.out1 = nn.Linear(hidden_size, 50)
         self.relu = nn.ReLU()
-        self.out = nn.Linear(50, 1)
+        self.out = nn.Linear(50, output_size)
         self.attention = False
         self.dropout = nn.Dropout(dropout)
 
