@@ -147,7 +147,7 @@ def zmodel(file):
         print(f"{file} no existe. Por favor defina un archivo con --file")
     name = cfg["experiment"]
     epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
-    cfg = AttrDict(parser(cfg['experiment', epoch])(cfg))
+    cfg = AttrDict(parser(name, epoch)(cfg))
 
     try:
         with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
