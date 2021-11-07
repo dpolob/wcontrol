@@ -155,17 +155,17 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xt, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
-        Xt = Xt.to(self.device)
+    def _loss_batch(self, Xf, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False):
+        Xf = Xf.to(self.device)
         X = X.to(self.device)
         Yt = Yt.to(self.device)
         Y = Y.to(self.device)
         P = P.to(self.device)
         
         if pass_y:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+            y_pred = self.model(Xf, X, Yt, Y, P, teacher)
         else:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+            y_pred = self.model(Xf, X, Yt, Y, P, teacher)
 
         loss = self.loss_fn(y_pred, Y[:, 1:, :])  # debo quitar la componente 0
         if additional_metrics is not None:
@@ -174,7 +174,7 @@ class TorchTrainer():
             loss.backward()
             self._step_optim()
         loss_value = loss.item()
-        del Xt
+        del Xf
         del X
         del Yt
         del Y
@@ -196,8 +196,8 @@ class TorchTrainer():
         eval_bar = tqdm(dataloader, leave=False)
         loss_values = []
         with torch.no_grad():
-            for Xt, X, Yt, Y, P in eval_bar:
-                loss_value = self._loss_batch(Xt, X, Yt, Y, P, False, False, False)
+            for Xf, X, Yt, Y, P in eval_bar:
+                loss_value = self._loss_batch(Xf, X, Yt, Y, P, False, False, False)
                 loss_values.append(loss_value)
                 # if len(loss_values[0]) > 1:
                 #     loss_value = np.mean([lv[0] for lv in loss_values])
@@ -215,37 +215,37 @@ class TorchTrainer():
         self.model.eval()
         predictions = []
         with torch.no_grad():
-            for xt, x, yt, y, P in tqdm(dataloader):
+            for Xt, X, Yt, Y, P in tqdm(dataloader):
                 # if type(xb) is list:
                 #     xb = [xbi.to(self.device) for xbi in xb]
                 # else:
                 #     xb = xb.to(self.device)
                 # yb = yb.to(self.device)
-                xt = xt.to(self.device)
-                x = x.to(self.device)
-                yt = yt.to(self.device)
-                y = y.to(self.device)
+                Xt = Xt.to(self.device)
+                X = X.to(self.device)
+                Yt = Yt.to(self.device)
+                Y = Y.to(self.device)
                 P = P.to(self.device)
 
-                y_pred = self.model(xt, x, yt, y, P, teacher=False)
+                y_pred = self.model(Xt, X, Yt, Y, P, teacher=False)
                 #tqdm.write(y_pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)
         return predictions
 
     # pass single batch input, without batch axis
-    def predict_one(self, xt, x, yt):
+    def predict_one(self, Xf, X, Yt):
         self.model.eval()
         with torch.no_grad():
             # if type(x) is list:
             #     x = [xi.to(self.device).unsqueeze(0) for xi in x]
             # else:
             #     x = x.to(self.device).unsqueeze(0)
-            xt = xt.to(self.device)
-            x = x.to(self.device)
-            yt = yt.to(self.device)
+            Xf = Xf.to(self.device)
+            X = X.to(self.device)
+            Yt = Yt.to(self.device)
 
-            y_pred = self.model(x)
+            y_pred = self.model(X)
             if self.device == 'cuda':
                 y_pred = y_pred.cpu()
             y_pred = y_pred.numpy()
@@ -272,8 +272,8 @@ class TorchTrainer():
             running_loss = 0
             # additional_running_loss = [0 for _ in self.additional_metric_fns]
             training_bar = tqdm(train_dataloader, leave=False)
-            for it, (Xt, X, Yt, Y, P) in enumerate(training_bar):
-                loss, y_pred = self._loss_batch(Xt=Xt,
+            for it, (Yt, X, Yt, Y, P) in enumerate(training_bar):
+                loss, y_pred = self._loss_batch(Xf=Yt,
                                         X=X,
                                         Yt=Yt,
                                         Y=Y,
