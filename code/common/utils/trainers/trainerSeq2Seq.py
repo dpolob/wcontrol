@@ -219,19 +219,19 @@ class TorchTrainer():
         self.model.eval()
         predictions = []
         with torch.no_grad():
-            for Xt, X, Yt, Y, P in tqdm(dataloader):
+            for Xf, X, Yt, Y, P in tqdm(dataloader):
                 # if type(xb) is list:
                 #     xb = [xbi.to(self.device) for xbi in xb]
                 # else:
                 #     xb = xb.to(self.device)
                 # yb = yb.to(self.device)
-                Xt = Xt.to(self.device)
+                Xf = Xf.to(self.device)
                 X = X.to(self.device)
                 Yt = Yt.to(self.device)
                 Y = Y.to(self.device)
                 P = P.to(self.device)
 
-                y_pred = self.model(Xt, X, Yt, Y, P, teacher=False)
+                y_pred = self.model(Xf, X, Yt, Y, P, teacher=False)
                 #tqdm.write(y_pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)

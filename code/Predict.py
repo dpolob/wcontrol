@@ -159,15 +159,15 @@ def zmodel(file):
     
     PASADO = cfg.pasado
     FUTURO = cfg.futuro
-    PREDICCION = list(cfg.prediccion)
+    Fout = list(cfg.prediccion)
     device = 'cuda' if cfg.zmodel.model.use_cuda else 'cpu'        
     FECHA_INICIO_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_inicio, "%Y-%m-%d %H:%M:%S")
     FECHA_FIN_TEST = datetime.strptime(cfg.zmodel.dataloaders.test.fecha_fin, "%Y-%m-%d %H:%M:%S")
-    FEATURES = list(cfg.zmodel.model.encoder.features)
-    DEFINIDAS = list(cfg.zmodel.model.decoder.features)
-    NWP = list(cfg.zmodel.model.decoder.nwp)
+    Ff = list(cfg.zmodel.model.encoder.features)
+    Ft = list(cfg.zmodel.model.decoder.features)
+    Fnwp = list(cfg.zmodel.model.decoder.nwp)
     EPOCHS = cfg.zmodel.model.epochs
-    print(NWP)
+   
     if not cfg.zmodel.dataloaders.test.enable:
         print("El archivo no tiene definido dataset para test")
         exit()
@@ -181,44 +181,57 @@ def zmodel(file):
     print(f"Inicio del dataset en {metadata['fecha_min']}")
     
     kwargs = {'datasets': datasets,
-      'fecha_inicio_test': FECHA_INICIO_TEST,
-      'fecha_fin_test': FECHA_FIN_TEST,
-      'fecha_inicio': fecha_inicio,
-      'pasado': PASADO,
-      'futuro': FUTURO,
-      'etiquetaX': PREDICCION,
-      'etiquetaF': FEATURES,
-      'etiquetaT': DEFINIDAS,
-      'etiquetaP': NWP,
-      'name': name,
-      'model_name': cfg.zmodel.model.name,
-      'rnn_num_layers': cfg.zmodel.model.encoder.rnn_num_layers,
-      'encoder_hidden_size': cfg.zmodel.model.encoder.hidden_size,
-      'encoder_bidirectional' : cfg.zmodel.model.encoder.bidirectional,
-      'device': device,
-      'encoder_rnn_dropout': cfg.zmodel.model.encoder.rnn_dropout,
-      'decoder_hidden_size': cfg.zmodel.model.decoder.hidden_size,
-      'decoder_dropout': cfg.zmodel.model.decoder.dropout,
-      'model_scheduler': cfg.zmodel.model.scheduler,
-      'path_checkpoints': cfg.paths.zmodel.checkpoints,
-      'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
-      'epochs': EPOCHS,
-      'path_model' : cfg.paths.zmodel.model,
-      'indice_max': indice_max,
-      'indice_min': indice_min
-    }
-    y_pred, test_dataloader = predictor.predict(**kwargs)
+            'fecha_inicio_test': FECHA_INICIO_TEST,
+            'fecha_fin_test': FECHA_FIN_TEST,
+            'fecha_inicio': fecha_inicio,
+            'pasado': PASADO,
+            'futuro': FUTURO,
+            'etiquetaX': Fout,
+            'etiquetaF': Ff,
+            'etiquetaT': Ft,
+            'etiquetaP': Fnwp,
+            'name': name,
+            'model_name': cfg.zmodel.model.name,
+            'rnn_num_layers': cfg.zmodel.model.encoder.rnn_num_layers,
+            'encoder_hidden_size': cfg.zmodel.model.encoder.hidden_size,
+            'encoder_bidirectional' : cfg.zmodel.model.encoder.bidirectional,
+            'device': device,
+            'encoder_rnn_dropout': cfg.zmodel.model.encoder.rnn_dropout,
+            'decoder_hidden_size': cfg.zmodel.model.decoder.hidden_size,
+            'decoder_dropout': cfg.zmodel.model.decoder.dropout,
+            'model_scheduler': cfg.zmodel.model.scheduler,
+            'path_checkpoints': cfg.paths.zmodel.checkpoints,
+            'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
+            'epochs': EPOCHS,
+            'path_model' : cfg.paths.zmodel.model,
+            'indice_max': indice_max,
+            'indice_min': indice_min
+            }
+    y_pred, test_dataloader = predictor.predict(**kwargs)  # se devuelve un numpy (len(test), N, Ly, Fout), dataloader
+    assert y_pred.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
+    assert y_pred.shape[3]==len(Fout), "Revisar y_pred.shape[3]!!!"
+    assert y_pred.shape[2]==FUTURO, "Revisar y_pred.shape[2]!!!"
+    # Creamos la matriz y de salida real, con el mismo shape que las predicciones
+    y_real = np.empty_like(y_pred)
+    y_nwp = np.empty_like(y_pred)
+    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
+        # Y: torch.from_numpy(Y).float()  # (batches, Ly + 1, Fout)
+        # P: torch.from_numpy(P).float()  # (batches, Ly + 1, Fnwp)
+        # hay que quitarles la componente 0 y pasarlos a numpy
+        y_real[i, ...] = Y[:, 1:, :].numpy()
+        y_nwp[i, ...] = P[:, 1:, :].numpy()
+        
+    predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
  
-    #print("y_pred:", len(y_pred))
-    predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)), 'Ypred': np.zeros(len(y_pred))}).astype('object')
-    #print(predicciones)
-    import copy
-    for it, (_, _, _, y, _) in enumerate(tqdm((test_dataloader))):
-        y_cp = copy.deepcopy(y)
-        del y
-        predicciones.iloc[it].loc['Y'] = list(np.squeeze(y_cp[:, 1:, :].numpy()))
-        predicciones.iloc[it].loc['Ypred'] = list(np.squeeze(y_pred[it]))
-    print(len(predicciones))
+    # predicciones = pd.DataFrame({'Y': np.zeros(len(y_pred)), 'Ypred': np.zeros(len(y_pred))}).astype('object')
+    # #print(predicciones)
+    # import copy
+    # for it, (_, _, _, y, _) in enumerate(tqdm((test_dataloader))):
+    #     y_cp = copy.deepcopy(y)
+    #     del y
+    #     predicciones.iloc[it].loc['Y'] = list(np.squeeze(y_cp[:, 1:, :].numpy()))
+    #     predicciones.iloc[it].loc['Ypred'] = list(np.squeeze(y_pred[it]))
+    # print(len(predicciones))
     
     output = Path(cfg.paths.zmodel.predictions)
     output.parent.mkdir(parents=True, exist_ok=True)

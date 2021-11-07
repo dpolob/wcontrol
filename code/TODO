@@ -10,7 +10,6 @@
 
 # Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
 
-Dataset convendria serparar la etiquetaT y etiquetaF
 #seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
 
 
@@ -26,6 +25,7 @@ Cambiar nombre a modules (es mu feo)
 
 Quitar todo lo de teacher forcing y duplicate teacher forcing
 
+Guardar hiperparametros con el modelo, para no tener que crear los Encoders y Decoders en el predict
 
 Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout)
 Algunos argumentos de entrada de  model = module.EncoderDecoderWrapper(encoder=encoder,
@@ -37,28 +37,5 @@ Algunos argumentos de entrada de  model = module.EncoderDecoderWrapper(encoder=e
                                     device=device)
 se pueden obtener del encoder y el decoder
 
-# def quitar_nans(df: pd.DataFrame=None) -> pd.DataFrame:
-#     # chequear que las variables ciclicas de fecha estan y si no es asi crearlas
-#     if set(['dia_sin', 'dia_cos', 'mes_sin', 'mes_cos']).issubset(df.columns):
-#         tqdm.write(f"Las variables ciclicas estan creadas")
-#         return None
-    
-#     df['fecha'] = df.index
-#     df['dia_sin'], df['dia_cos'], df['mes_sin'], df['mes_cos'], df['hora_sin'], df['hora_cos'] = cyclic(df['fecha'])
-#     df.drop(columns=['fecha'], inplace=True)
-#     tqdm.write(f"{df.isna().sum().sum()}", end='')
-#     if not check_no_nan(df):
-#         imp_mean = IterativeImputer(random_state=0)
-#         idf=imp_mean.fit_transform(df)
-#         idf = pd.DataFrame(idf, columns=df.columns)
-#         df['temperatura'] = idf['temperatura'].values
-#         df['hr'] = idf['hr'].values
-#         df['precipitacion'] = idf['precipitacion'].values
-#         del idf
-#         tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
-#         tqdm.write("\t" + OK)
-#         if not check_no_nan(df):
-#             tqdm.write("Quedan NaNs en el dataset. Por favor compruebe")
-#             return None
-#     df.drop(columns=['dia_sin', 'dia_cos', 'mes_sin','mes_cos', 'hora_sin', 'hora_cos'], inplace=True)
-#     return df
+
+La salida X en el dataset no vale para nada si funciona 3salidas y aun asi creo que tampoco

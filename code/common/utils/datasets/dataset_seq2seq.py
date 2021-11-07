@@ -68,11 +68,11 @@ class Seq2SeqDataset(Dataset):
                     Y[batch, seq] = self.datasets[count].loc[self.datasets[count].index == item, self.etiquetaX].values
                     P[batch, seq] = self.datasets[count].loc[self.datasets[count].index == item, self.etiquetaP].values
             batch +=1
-        return (torch.from_numpy(X_f).float(),  # X_f
-                torch.from_numpy(X).float(),  # X
-                torch.from_numpy(Y_t).float(),  # Y_t
-                torch.from_numpy(Y).float(),  # Y
-                torch.from_numpy(P).float())  # P  
+        return (torch.from_numpy(X_f).float(),  # (batches, Lx + 1, Ff)
+                torch.from_numpy(X).float(),  # (batches, Lx + 1, Fout)
+                torch.from_numpy(Y_t).float(),  # (batches, Ly + 1, Ft)
+                torch.from_numpy(Y).float(),  # (batches, Ly + 1, Fout)
+                torch.from_numpy(P).float())  # (batches, Ly + 1, Fnwp)
     
     
 # %%

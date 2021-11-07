@@ -34,7 +34,8 @@ def zmodel(file):
     with open(Path(cfg.paths.zmodel.predictions), 'rb') as handler:
         predicciones = pickle.load(handler)
         print("Cargado archivo de predicciones")
-        
+    y_pred, y_real, y_nwp = predicciones['y_pred'], predicciones['y_real'], predicciones['y_nwp']
+
     if isinstance(cfg.zmodel.resultados.visualizacion.muestras, str):  # all, random o range
         if cfg.zmodel.resultados.visualizacion.muestras == 'range':  # range
             inicio = cfg.zmodel.resultados.visualizacion.inicio
@@ -45,8 +46,10 @@ def zmodel(file):
     plots_path = Path(cfg.paths.zmodel.viz) 
     plots_path.mkdir(parents=True, exist_ok=True)    
     for idx in tqdm(muestras):
-        plt.plot(np.mean(predicciones.iloc[idx].loc['Y'], axis=0).reshape(-1,1), 'g')
-        plt.plot(np.mean(predicciones.iloc[idx].loc['Ypred'], axis=0).reshape(-1,1), 'r')
+        plt.plot(np.mean(y_real[idx], axis=0).reshape(-1,1), 'green')
+        plt.plot(np.mean(y_pred[idx], axis=0).reshape(-1,1), 'red')
+        plt.plot(np.mean(y_nwp[idx], axis=0).reshape(-1,1), 'magenta')
+        
         plt.savefig(plots_path / f"{idx}.png", dpi=300)
         plt.close()
         
