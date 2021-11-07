@@ -164,8 +164,9 @@ def zmodel(file):
     encoder = encoder.to(device)
 
     decoder = module.DecoderCell(input_feature_len=len(DEFINIDAS) + 1,
-                            hidden_size=cfg.zmodel.model.decoder.hidden_size,
-                            dropout=cfg.zmodel.model.decoder.dropout)
+                                 hidden_size=cfg.zmodel.model.decoder.hidden_size,
+                                 output_size=len(PREDICCION),
+                                 dropout=cfg.zmodel.model.decoder.dropout)
     decoder = decoder.to(device)
 
     model = module.EncoderDecoderWrapper(encoder=encoder,
