@@ -7,14 +7,12 @@ class RNNEncoder(nn.Module):
 
     def __init__(self, rnn_num_layers: int, input_feature_len: int, sequence_len: int, hidden_size: int = 100, bidirectional: bool = False, device: str = 'cpu', rnn_dropout: float = 0.0) -> None:
         """Clase para el encoder. Toma como parametros de entrada:
-            - Variables de estacion y temporales Xt (N, Lx, Ft in)
-            - Variables calculadas X (N, Lx, Ff in)
-        La salida es el estado oculto de la ultima capa
+           La salida es el estado oculto de la ultima capa
 
         Inputs:
             rnn_num_layers (int): numero de capas de la red (NL)
-            input_feature_len (int): numero de features de cada secuencia (Ft in)
-            sequence_len (int): longitud de la secuencia temporal (Lx)
+            input_feature_len (int): numero de features de cada secuencia (Ff)
+            sequence_len (int): longitud de la secuencia temporal del pasado (Lx)
             hidden_size (int): numero de representaciones internas de la red (HID)
             bidirectional (bool): define si la red es bidireccional (D)
             device (str): 'cpu' o 'cuda' para seleccionar dispositivo de calculo
@@ -79,7 +77,7 @@ class DecoderCell(nn.Module):
     def __init__(self, input_feature_len: int, hidden_size: int, output_size: int=None, dropout: float = 0.2) -> None:
         """
         Input:
-            input_feature_len (int): Numero de features de entrada (Ft in)
+            input_feature_len (int): Numero de features de entrada (Ft + Fnwp) Fnwp es la prediccion  
             hidden_size (int): Numero de representaciones internas de la red (HID) 
             output_size (int): Numero de variables de salida (Fout)
             dropout (float): valor de dropout para apagar la capa hidden 
@@ -101,14 +99,14 @@ class DecoderCell(nn.Module):
         Propagacion de la red
 
         Inputs:
-            y (tensor): (N, Ft in) Features de datos de entrada 
+            y (tensor): (N, Ft + Fnwp) Features de datos de entrada, compuesto de temporales + las predicciones nwp
         Outputs:
-            output (tensor): (N, 1) salida de la red
+            output (tensor): (N, Fout) salida de la red
             rnn_hidden (tensor): (N, HID) salida de la representacion de la red 
                 La salida hidden de la red es (D * NL, N, HID) y es convertida (N, HID) en el codigo
         """
         rnn_hidden = self.decoder_rnn_cell(y, prev_hidden)  # (N, HID)
-        output = self.out(self.relu(self.out1(rnn_hidden)))  # (N, 1)
+        output = self.out(self.relu(self.out1(rnn_hidden)))  # (N, Fout)
         return output, self.dropout(rnn_hidden)  # (N,1), (N, HID)
 
 
@@ -123,8 +121,8 @@ class EncoderDecoderWrapper(nn.Module):
             decoder_cell (DecoderCell): Modelo de decoder a usar
             output_size (int): Numero de variables de salida (Fout)
             output_sequence_len (int): Longitud de la secuencia a predecir (Ly)
-            teacher_forcing (float, optional): Probabilidad de uso del teacher. Defaults to 0.3.
-            duplicate_teaching (int, optional): Duplicar la probabilidad pasado un determinado punto en la secuencia. Defaults to 40.
+            ## DEPRECATED teacher_forcing (float, optional): Probabilidad de uso del teacher. Defaults to 0.3.  
+            ## DEPRECATED duplicate_teaching (int, optional): Duplicar la probabilidad pasado un determinado punto en la secuencia. Defaults to 40.
             device (str, optional): Dispositivo. Defaults to 'cpu'.
         """
         super().__init__()
@@ -136,13 +134,13 @@ class EncoderDecoderWrapper(nn.Module):
         self.duplicate_teaching = duplicate_teaching
         self.device = device
 
-    def forward(self, x_t: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, p: torch.tensor = None, teacher: bool = None) -> torch.tensor:
+    def forward(self, x_f: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, p: torch.tensor = None, teacher: bool = None) -> torch.tensor:
         """Propagacion
 
         Inputs:
-            x_t (torch.tensor): Features pasadas de estacion y tiempo (N, Lx, Ft in)
-            x (torch.tensor): Features pasadas de climaticas y calculadas(N, Lx, Ff in)
-            y_t (torch.tensor): Features futuras de estacion y tiempo (N, Ly, Ft in)
+            x_f (torch.tensor): Features de entrada (N, Lx, Ff)  Ff incluye las calculadas, climaticas y las temporales(Ft)
+            x (torch.tensor): Variables climaticas a predecir  (N, Lx, Fout)
+            y_t (torch.tensor): Features futuras de estacion y tiempo (N, Ly, Ft)
             y (torch.tensor): Features futuras climatica (N, Ly, Fout)
             p (torch.tensor): Features climaticas de prediccion (N, Ly, Fout)
             teacher (bool, optional): Define si se usa el teacher. Defaults to None.
@@ -150,12 +148,12 @@ class EncoderDecoderWrapper(nn.Module):
         Outputs:
             outputs: Salida de la red(N, Ly, Fout)
         """
-        encoder_input = torch.cat((x_t, x), 2)  # (N, Lx, Ft in + Ff in))
+        encoder_input = x_f  #  (N, Lx, Ff)
         _, encoder_hidden = self.encoder(encoder_input)  # (N, HID)
 
         decoder_hidden = encoder_hidden  # (N, HID)
-        # (N, Ft in) + (N, Fout) = (N,Ft in + Fout)   ### + Fout
-        decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), 1)
+        # (N, Ft + Fout) = (N, Ft) + (N, Fout) 
+        decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), axis=1)
 
         # elimino la componente extra que me sobra
         y_t = y_t[:, 1:, :]
@@ -164,10 +162,10 @@ class EncoderDecoderWrapper(nn.Module):
         if p is not None:
             p = p[:, 1:, :]
 
-        outputs = torch.zeros(size=(x_t.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, 1)
+        outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout)
         #  tf = self.teacher_forcing 
         for i in range(self.output_sequence_len):
-            # (N,1), (N, HID) = decoder((N,Ft in + Fout),(N, HID))
+            # (N,1), (N, HID) = decoder((N,Ft + Fout), (N, HID))
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)
             outputs[:, i, :] = decoder_output
             # if i == self.duplicate_teaching:
@@ -178,5 +176,5 @@ class EncoderDecoderWrapper(nn.Module):
             #    decoder_input = torch.cat((y_t[:, i, :], decoder_output), 1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
             
             # asignacion de P
-            decoder_input = torch.cat((y_t[:, i, :], p[:, i, :]), axis=1)  # (N,Ft in) + (N, Fout) = (N,Ft in + Fout)
-        return outputs  # (N, Ly, Fouts)
+            decoder_input = torch.cat((y_t[:, i, :], p[:, i, :]), axis=1)  # (N,Ft) + (N, Fout) = (N,Ft + Fout)
+        return outputs  # (N, Ly, Fout)
