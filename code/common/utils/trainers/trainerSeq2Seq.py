@@ -155,7 +155,7 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xf, X, Yt, Y, P,  teacher, optimize, pass_y, additional_metrics=None, return_ypred=False, weights: list = None):
+    def _loss_batch(self, Xf, X, Yt, Y, P,  teacher, optimize, pass_y, unitary_metrics: list=None, return_ypred=False, weights: list = None):
         Xf = Xf.to(self.device)
         X = X.to(self.device)
         Yt = Yt.to(self.device)
@@ -164,9 +164,9 @@ class TorchTrainer():
         
         # la salida es (N, Ly, Fout)
         if pass_y:
-            y_pred = self.model(x_t=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
+            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         else:
-            y_pred = self.model(x_t=Xf, x=X, y_t=Yt, y=None, p=P, teacher=teacher)
+            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=None, p=P, teacher=teacher)
         # definir la perdida para cada componente
         # debo quitar la componente 0 de Y
         losses = [self.loss_fn(y_pred[:, :, _], Y[:, 1:, _]) for _ in range(y_pred.shape[2])]  # y_pred.shape[2] = Fout
@@ -174,24 +174,21 @@ class TorchTrainer():
             losses = losses * weights
         loss = torch.sum(torch.stack(losses))  # un solo numero
                
-        if additional_metrics is not None:
-            additional_metrics = [fn(y_pred, Y[:, 1:, :]) for name, fn in additional_metrics]
+        if unitary_metrics is not None:
+            unitary_metrics = [_.item() for _ in losses]
         
         if optimize:
             loss.backward()
             self._step_optim()
+        
         loss_value = loss.item()
-        del Xf
-        del X
-        del Yt
-        del Y
-        del P
-        del loss
-        if additional_metrics is not None:
+        del (Xf, X, Yt, Y, P, loss, losses)
+    
+        if unitary_metrics is not None:
             if return_ypred:
-                return loss_value, additional_metrics, y_pred
+                return loss_value, unitary_metrics, y_pred
             else:
-                return loss_value, additional_metrics
+                return loss_value, unitary_metrics
         else:
             if return_ypred:
                 return loss_value, y_pred
@@ -268,39 +265,42 @@ class TorchTrainer():
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
-        
+        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion']
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
                 start_epoch = loaded_epoch
-        for i in tqdm(range(start_epoch, start_epoch + epochs), leave=True):
+        for epoch in tqdm(range(start_epoch, start_epoch + epochs), leave=True):
             self.model.train()
             training_losses = []
             running_loss = 0
-            # additional_running_loss = [0 for _ in self.additional_metric_fns]
+            unitary_running_loss = [0.0 for _ in range(len(unitary_metrics))]
+
             training_bar = tqdm(train_dataloader, leave=False)
-            for it, (Yt, X, Yt, Y, P) in enumerate(training_bar):
-                loss, y_pred = self._loss_batch(Xf=Yt,
-                                        X=X,
-                                        Yt=Yt,
-                                        Y=Y,
-                                        P=P,
-                                        teacher=True,
-                                        optimize=True,
-                                        pass_y=self.pass_y,
-                                        return_ypred = True)
+            for it, (Xf, X, Yt, Y, P) in enumerate(training_bar):
+                loss, unitary_losses, y_pred = self._loss_batch(Xf=Xf,
+                                                X=X,
+                                                Yt=Yt,
+                                                Y=Y,
+                                                P=P,
+                                                teacher=True,
+                                                optimize=True,
+                                                pass_y=self.pass_y,
+                                                unitary_metrics=unitary_metrics,
+                                                return_ypred = True)
                 running_loss += loss
-                # for i, additional_loss in enumerate(additional_metrics):
-                #     additional_running_loss[i] += additional_loss
+                for idx, unitary_loss in enumerate(unitary_losses):
+                    unitary_running_loss[idx] += unitary_loss
 
                 training_bar.set_description("loss %.4f" % loss)
                 if it % 100 == 99:
-                    self.writer.add_scalar('training loss', running_loss / 100, i * len(train_dataloader) + it)
-                    # for i, additional_loss in enumerate(additional_running_loss):
-                    #     self.writer.add_scalar(self.additional_metric_fns.keys[i], additional_loss /100, i * len(train_dataloader) + it )    
+                    self.writer.add_scalar('training loss', running_loss / 100, epoch * len(train_dataloader) + it)
+                    for epoch, name in enumerate(unitary_metrics):
+                        self.writer.add_scalar(name, unitary_running_loss[epoch] / 100, epoch * len(train_dataloader) + it )    
+                    
                     training_losses.append(running_loss / 100)
                     running_loss = 0
-                    # additional_running_loss = [0 for _ in self.additional_metric_fns]
+                    unitary_running_loss = [0.0 for _ in range(len(unitary_metrics))]
                 # if plot and it % 1000 == 999:
                     # fig =plt.figure(figsize=(26,12))
                     # plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
@@ -309,19 +309,19 @@ class TorchTrainer():
 
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()
-            tqdm.write(f'Training loss at epoch {i + 1} - {np.mean(training_losses)}')
+            tqdm.write(f'Training loss at epoch {epoch + 1} - {np.mean(training_losses)}')
             if valid_dataloader is not None:
                 valid_loss, additional_metrics = self.evaluate(valid_dataloader)
-                self.writer.add_scalar('validation loss', valid_loss, i)
+                self.writer.add_scalar('validation loss', valid_loss, epoch)
                 if additional_metrics is not None:
                     tqdm.write(additional_metrics)
-                tqdm.write(f'Valid loss at epoch {i + 1}- {valid_loss}')
-                self.valid_losses[i+1] = valid_loss
+                tqdm.write(f'Valid loss at epoch {epoch + 1}- {valid_loss}')
+                self.valid_losses[epoch+1] = valid_loss
                 #tqdm.write(f"{self.valid_losses[i+1]}")
             if self.scheduler is not None and not self.scheduler_batch_step:
                 self._step_scheduler(valid_loss)
-            if (i + 1) % self.train_checkpoint_interval == 0:
-                self._save_checkpoint(i+1)
+            if (epoch + 1) % self.train_checkpoint_interval == 0:
+                self._save_checkpoint(epoch+1)
             if valid_dataloader is not None and self.early_stop is not None and self._early_stopping():
                 tqdm.write("Se ha alcanzado la condicion de early stopping!!!!")
                 break

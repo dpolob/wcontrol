@@ -178,4 +178,3 @@ class EncoderDecoderWrapper(nn.Module):
             # asignacion de P
             decoder_input = torch.cat((y_t[:, i, :], p[:, i, :]), axis=1)  # (N,Ft) + (N, Fout) = (N,Ft + Fout)
         return outputs  # (N, Ly, Fout)
-q
