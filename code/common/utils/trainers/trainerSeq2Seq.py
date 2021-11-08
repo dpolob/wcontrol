@@ -166,7 +166,7 @@ class TorchTrainer():
         if pass_y:
             y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         else:
-            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=None, p=P, teacher=teacher)
+            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         # definir la perdida para cada componente
         # debo quitar la componente 0 de Y
         losses = [self.loss_fn(y_pred[:, :, _], Y[:, 1:, _]) for _ in range(y_pred.shape[2])]  # y_pred.shape[2] = Fout
@@ -270,7 +270,7 @@ class TorchTrainer():
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
                 start_epoch = loaded_epoch
-        for epoch in tqdm(range(start_epoch, start_epoch + epochs), leave=True):
+        for i_epoch in tqdm(range(start_epoch, start_epoch + epochs), leave=True):
             self.model.train()
             training_losses = []
             running_loss = 0
@@ -294,34 +294,36 @@ class TorchTrainer():
 
                 training_bar.set_description("loss %.4f" % loss)
                 if it % 100 == 99:
-                    self.writer.add_scalar('training loss', running_loss / 100, epoch * len(train_dataloader) + it)
-                    for epoch, name in enumerate(unitary_metrics):
-                        self.writer.add_scalar(name, unitary_running_loss[epoch] / 100, epoch * len(train_dataloader) + it )    
+                    self.writer.add_scalar('training loss', running_loss / 100, i_epoch * len(train_dataloader) + it)
+                    for idx, name in enumerate(unitary_metrics):
+                        self.writer.add_scalar(name, unitary_running_loss[idx] / 100, i_epoch * len(train_dataloader) + it )    
                     
                     training_losses.append(running_loss / 100)
                     running_loss = 0
                     unitary_running_loss = [0.0 for _ in range(len(unitary_metrics))]
-                # if plot and it % 1000 == 999:
-                    # fig =plt.figure(figsize=(26,12))
-                    # plt.plot(torch.mean(Y, dim=0).cpu().detach().numpy().reshape(-1,1), 'b')
-                    # plt.plot(torch.mean(y_pred, dim=0).cpu().detach().numpy().reshape(-1,1), 'r')
-                    # self.writer.add_figure('data/test/resultados', fig, i * len(train_dataloader) + it)
+                if plot and it % 1000 == 999:
+                    for idx in range(y_pred.shape[2]):
+                        fig =plt.figure(figsize=(26,12))
+                        plt.plot(torch.mean(Y[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
+                        plt.plot(torch.mean(y_pred[..., idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
+                        plt.plot(torch.mean(P[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
+                        self.writer.add_figure(f"data/test/resultados_{idx}", fig, i_epoch * len(train_dataloader) + it)
 
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()
-            tqdm.write(f'Training loss at epoch {epoch + 1} - {np.mean(training_losses)}')
+            tqdm.write(f'Training loss at epoch {i_epoch + 1} - {np.mean(training_losses)}')
             if valid_dataloader is not None:
                 valid_loss, additional_metrics = self.evaluate(valid_dataloader)
-                self.writer.add_scalar('validation loss', valid_loss, epoch)
+                self.writer.add_scalar('validation loss', valid_loss, i_epoch)
                 if additional_metrics is not None:
                     tqdm.write(additional_metrics)
-                tqdm.write(f'Valid loss at epoch {epoch + 1}- {valid_loss}')
-                self.valid_losses[epoch+1] = valid_loss
+                tqdm.write(f'Valid loss at epoch {i_epoch + 1}- {valid_loss}')
+                self.valid_losses[i_epoch + 1] = valid_loss
                 #tqdm.write(f"{self.valid_losses[i+1]}")
             if self.scheduler is not None and not self.scheduler_batch_step:
                 self._step_scheduler(valid_loss)
-            if (epoch + 1) % self.train_checkpoint_interval == 0:
-                self._save_checkpoint(epoch+1)
+            if (i_epoch + 1) % self.train_checkpoint_interval == 0:
+                self._save_checkpoint(i_epoch + 1)
             if valid_dataloader is not None and self.early_stop is not None and self._early_stopping():
                 tqdm.write("Se ha alcanzado la condicion de early stopping!!!!")
                 break

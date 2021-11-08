@@ -6,7 +6,7 @@ prediccion:
   - temperatura
   - hr
   - precipitacion
-pasado: 144
+pasado: 72
 futuro: 72
 paths:
   zmodel:
