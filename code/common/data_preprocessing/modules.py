@@ -375,24 +375,21 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
         
     tqdm.write(OK)
     
-    # tqdm.write(f"\tAplicando PowerTransformer", end='')
-    # rain_hr = pd.DataFrame()
-    # rain_hr['precipitacion'] = pd.concat([_['precipitacion'] for _ in dfs], axis=0)
-    # rain_hr['nwp_precipitacion'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    # rain_hr['hr'] = pd.concat([_['hr'] for _ in dfs], axis=0)
-    # rain_hr['nwp_hr'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    # pt = PowerTransformer(method='yeo-johnson', standardize=False)
-    # pt.fit(rain_hr)
-    # for df in dfs:
-    #     df[pt.feature_names_in_] = pt.transform(df[pt.feature_names_in_])
-    #     if not no_NaNs(df):
-    #         tqdm.write("Se han generado NANs!!" + FAIL)
-    #         exit()
-    # tqdm.write(OK)
+    tqdm.write(f"Aplicando RainTransformer", end='')
+    for df in dfs:
+        #df['no_llueve'] = df['precipitacion'].apply(lambda x: 1 if x==0 else 0)
+        #df['nwp_no_llueve'] = df['nwp_precipitacion'].apply(lambda x: 1 if x==0 else 0)
+        #df[['precipitacion', 'nwp_precipitacion']] = df[['precipitacion', 'nwp_precipitacion']].apply(lambda x: np.log(x + 0.2))
+        df['precipitacion'] = df['precipitacion'].cumsum(axis=0)
+        df['nwp_precipitacion'] = df['nwp_precipitacion'].cumsum(axis=0)
+    tqdm.write(OK)
     
-    tqdm.write(f"\tAplicando escalado:", end='')
+    tqdm.write(f"Aplicando escalado:", end='')
+
     parametros = dict()
     for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
+    
+    # for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):
         parametros[metrica] = dict()
         parametros[metrica]['max'] = float(max([_[metrica].max() for _ in dfs]))
         parametros[metrica]['min'] = float(min([_[metrica].min() for _ in dfs]))

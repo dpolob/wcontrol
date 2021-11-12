@@ -265,7 +265,7 @@ class TorchTrainer():
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
-        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion']
+        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion', 'loss_no_llueve']
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
