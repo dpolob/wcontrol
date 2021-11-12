@@ -160,7 +160,7 @@ class EncoderDecoderWrapper(nn.Module):
         if y is not None:
             y = y[:, 1:, :]
         if p is not None:
-            p = p[:, 1:, :]
+            p = p[:, :-1, :]
 
         outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout)
         #  tf = self.teacher_forcing 
