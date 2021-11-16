@@ -89,7 +89,7 @@ class DecoderCell(nn.Module):
             hidden_size=hidden_size,
         )
         self.out1 = nn.Linear(hidden_size, 50)
-        self.relu = nn.ReLU()
+        self.elu = nn.ELU()
         self.out = nn.Linear(50, output_size)
         self.attention = False
         self.dropout = nn.Dropout(dropout)
@@ -106,7 +106,7 @@ class DecoderCell(nn.Module):
                 La salida hidden de la red es (D * NL, N, HID) y es convertida (N, HID) en el codigo
         """
         rnn_hidden = self.decoder_rnn_cell(y, prev_hidden)  # (N, HID)
-        output = self.out(self.relu(self.out1(rnn_hidden)))  # (N, Fout)
+        output = self.out(self.elu(self.out1(rnn_hidden)))  # (N, Fout)
         return output, self.dropout(rnn_hidden)  # (N,1), (N, HID)
 
 
