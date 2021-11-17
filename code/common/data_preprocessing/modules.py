@@ -390,6 +390,13 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
     #         exit()
     # tqdm.write(OK)
     
+    tqdm.write(f"Aplicando RainTransformer", end='')
+    for df in dfs:
+        df['no_llueve'] = df['precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
+        df['nwp_no_llueve'] = df['nwp_precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
+    tqdm.write(OK)
+    
+    
     tqdm.write(f"\tAplicando escalado:", end='')
     parametros = dict()
     for metrica in tqdm((['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd + var_nwp)):

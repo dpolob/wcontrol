@@ -39,6 +39,8 @@ class TorchTrainer():
         self.save_model_path = kwargs.get('save_model_path', None)
         
         self.early_stop = kwargs.get('early_stop', None)
+        
+        self.alpha = kwargs.get('alpha', None)
                 
         if self.save_model:
             torch.save(self.model, pathlib.Path(self.save_model_path))
@@ -162,18 +164,20 @@ class TorchTrainer():
         Y = Y.to(self.device)
         P = P.to(self.device)
         
-        # la salida es (N, Ly, Fout)
+         
         if pass_y:
             y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         else:
             y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
-        # definir la perdida para cada componente
-        # debo quitar la componente 0 de Y
-        losses = [self.loss_fn(y_pred[:, :, _], Y[:, 1:, _]) for _ in range(y_pred.shape[2])]  # y_pred.shape[2] = Fout
-        if weights is not None and isinstance(weights, list):
-            losses = losses * weights
-        loss = torch.sum(torch.stack(losses))  # un solo numero
-               
+        # definir la perdida para cada componente y debo quitar la componente 0 de Y
+        loss_temp = self.loss_fn(y_pred[:, :, 0], Y[:, 1:, 0])
+        loss_hr = self.loss_fn(y_pred[:, :, 1], Y[:, 1:, 1])
+        loss_precipitacion = self.loss_fn(y_pred[:, :, 2], Y[:, 1:, 2])
+        
+        loss_class_precipitacion = nn.BCELoss()(y_pred[:, :, 3], Y[:, 1:, 3])
+        loss = loss_temp + loss_hr + self.alpha * loss_precipitacion + (1 - self.alpha) * loss_class_precipitacion 
+        losses = [loss_temp, loss_hr, loss_precipitacion, loss_class_precipitacion]
+        
         if unitary_metrics is not None:
             unitary_metrics = [_.item() for _ in losses]
         
@@ -265,7 +269,7 @@ class TorchTrainer():
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
-        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion']
+        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion', 'loss_no_llueve']
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
@@ -303,7 +307,7 @@ class TorchTrainer():
                     unitary_running_loss = [0.0 for _ in range(len(unitary_metrics))]
                 if plot and it % 1000 == 999:
                     for idx in range(y_pred.shape[2]):
-                        fig =plt.figure(figsize=(26,12))
+                        fig =plt.figure(figsize=(13,6))
                         plt.plot(torch.mean(Y[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
                         plt.plot(torch.mean(y_pred[..., idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
                         plt.plot(torch.mean(P[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
