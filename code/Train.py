@@ -208,7 +208,8 @@ def zmodel(file):
                               #additional_metric_fns={"L1_mean_loss": lf.LossFunction(loss='L1', reduction='mean')}
                               save_model=cfg.zmodel.model.save_model,
                               save_model_path=cfg.paths.zmodel.model,
-                              early_stop=cfg.zmodel.model.early_stop
+                              early_stop=cfg.zmodel.model.early_stop,
+                              alpha = cfg.zmodel.model.decoder.alpha
                               )
 
     #trainer.lr_find(train_dataloader, model_optimizer, start_lr=1e-5, end_lr=1e-2, num_iter=500)
