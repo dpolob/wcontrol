@@ -165,11 +165,13 @@ class TorchTrainer():
         if pass_y:
             y_pred = self.model(Xf, X, Yt, Y, P, teacher)
         else:
+
             y_pred = self.model(Xf, X, Yt, Y, P, teacher)
 
         loss = self.loss_fn(y_pred, Y[:, 1:, :])  # debo quitar la componente 0
         if additional_metrics is not None:
             additional_metrics = [fn(y_pred, Y[:, 1:, :]) for name, fn in additional_metrics]
+
         if optimize:
             loss.backward()
             self._step_optim()
@@ -228,7 +230,8 @@ class TorchTrainer():
                 P = P.to(self.device)
 
                 y_pred = self.model(Xf, X, Yt, Y, P, teacher=False)
-                #tqdm.write(y_pred.shape)
+                #tqdm.write(y_
+                # pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)
         return predictions
