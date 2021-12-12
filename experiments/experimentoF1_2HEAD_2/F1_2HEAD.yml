@@ -1,4 +1,4 @@
-experiment: "experimentoF1_2HEAD"
+experiment: "experimentoF1_2HEAD_2"
 descripcion: | 
   72-72 con 2 heads
   
@@ -7,7 +7,7 @@ prediccion:
   - hr
   - clase_precipitacion
 
-pasado: 72
+pasado: 144
 futuro: 72
 paths:
   zmodel:
@@ -154,7 +154,7 @@ zmodel:
     teacher_forcing: 0.0
     duplicate_teaching: 480
     loss_function:
-      loss_fn: L1
+      loss_fn: mse
       reduction: mean
       coefs: None
     scheduler: True
@@ -171,9 +171,9 @@ zmodel:
        'precipitacionmacd', 
        'dia', 'mes', 'hora', 'distancia', 'altitud',]
     decoder:
-      lr: 0.025
+      lr: 0.03
       hidden_size: 100
-      dropout: 0.2
+      dropout: 0.1
       alpha: 0.5
       features:
       - dia

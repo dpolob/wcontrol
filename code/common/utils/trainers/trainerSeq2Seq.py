@@ -170,15 +170,21 @@ class TorchTrainer():
         else:
             y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
         # definir la perdida para cada componente y debo quitar la componente 0 de Y
-        loss_temp = self.loss_fn(y_pred[:, :, 0], Y[:, 1:, 0])
-        loss_hr = self.loss_fn(y_pred[:, :, 1], Y[:, 1:, 1])
-        loss_precipitacion = self.loss_fn(y_pred[:, :, 2], Y[:, 1:, 2])
-        
-        loss_class_precipitacion = nn.BCELoss()(y_pred[:, :, 3], Y[:, 1:, 3])
-        loss = loss_temp + loss_hr + self.alpha * loss_precipitacion + (1 - self.alpha) * loss_class_precipitacion 
-        losses = [loss_temp, loss_hr, loss_precipitacion, loss_class_precipitacion]
+        loss_temp = self.loss_fn(y_pred[:, :, 0], Y[:, :-1, 0])
+        loss_hr = self.loss_fn(y_pred[:, :, 1], Y[:, :-1:, 1])
+        # print(f"{y_pred[:, :, 2:].shape=}")
+        # print(f"{Y[:, 1:, 2].shape=}")
+        # print(f"{y_pred[:, :, 2:].reshape(-1, 72).shape=}")
+        # print(f"{Y[:, 1:, 2].reshape(-1).shape=}")
+        weights = torch.tensor([1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]).to(self.device)
+        clas_input = y_pred[:, :, 2:].reshape(-1, 8)  # y_pred(N, 72, 8) -> reshape(-1, 8) -> y_pred(N*72, 8), al final compara clases
+        clas_target = torch.argmax(Y[:, :-1, 2:], dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(N, 72, 8) -> argmax(dim=-1) -> (N, 72, 1) -> reshape(-1,1) -> (N*72, 1) -> squeeze() -> (N*72)
+        loss_class_precipitacion = nn.CrossEntropyLoss(weight=weights)(clas_input, clas_target)
+        loss = loss_temp + loss_hr + self.alpha * loss_class_precipitacion 
+        losses = [loss_temp, loss_hr, loss_class_precipitacion]
         
         if unitary_metrics is not None:
+            
             unitary_metrics = [_.item() for _ in losses]
         
         if optimize:
@@ -236,7 +242,8 @@ class TorchTrainer():
                 P = P.to(self.device)
 
                 y_pred = self.model(Xf, X, Yt, Y, P, teacher=False)
-                #tqdm.write(y_pred.shape)
+                #tqdm.write(y_
+                # pred.shape)
                 predictions.append(y_pred.cpu().numpy())
         #tqdm.write(predictions)
         return predictions
@@ -269,7 +276,7 @@ class TorchTrainer():
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
-        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion', 'loss_no_llueve']
+        unitary_metrics = ['loss_temperatura', 'loss_hr', 'loss_precipitacion']
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
@@ -306,12 +313,29 @@ class TorchTrainer():
                     running_loss = 0
                     unitary_running_loss = [0.0 for _ in range(len(unitary_metrics))]
                 if plot and it % 1000 == 999:
-                    for idx in range(y_pred.shape[2]):
-                        fig =plt.figure(figsize=(13,6))
-                        plt.plot(torch.mean(Y[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
-                        plt.plot(torch.mean(y_pred[..., idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
-                        plt.plot(torch.mean(P[:, 1:, idx], dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
-                        self.writer.add_figure(f"data/test/resultados_{idx}", fig, i_epoch * len(train_dataloader) + it)
+                    fig =plt.figure(figsize=(13,6))
+                    # pintar temp idx =0
+                    plt.plot(torch.mean(Y[:, :-1, 0], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
+                    plt.plot(torch.mean(y_pred[..., 0], dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
+                    plt.plot(torch.mean(P[:, :-1, 0], dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
+                    self.writer.add_figure(f"data/test/resultados_temp", fig, i_epoch * len(train_dataloader) + it)
+                    fig =plt.figure(figsize=(13,6))
+                    # pintar hr idx = 1
+                    plt.plot(torch.mean(Y[:, :-1, 1], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
+                    plt.plot(torch.mean(y_pred[..., 1], dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
+                    plt.plot(torch.mean(P[:, :-1, 1], dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
+                    self.writer.add_figure(f"data/test/resultados_hr", fig, i_epoch * len(train_dataloader) + it)
+                    # pintar class idx = 2
+                    fig =plt.figure(figsize=(13,6))
+                    
+                    clas_input = y_pred[:, :, 2:].reshape(-1, 8)  # y_pred(N, 72, 8) -> reshape(-1, 8) -> y_pred(N*72, 8), al final compara clases
+                    plt.plot(torch.mean(torch.argmax(Y[:, :-1, 2:], dim=-1).type(torch.float), dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
+                    #plt.plot(torch.mean(Y[:, :-1, 2], dim=0).cpu().detach().numpy().reshape(-1,1), 'green')
+                    plt.plot(torch.mean(torch.argmax(y_pred[:, :, 2:], dim=-1).type(torch.float), dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
+                    #plt.plot(torch.mean(torch.argmax(nn.Softmax(dim=-1)(y_pred[..., 2:]), dim=-1).type(torch.float), dim=0).cpu().detach().numpy().reshape(-1,1), 'red')
+                    
+                    plt.plot(torch.mean(torch.argmax(P[:, :-1, 2:], dim=-1).type(torch.float), dim=0).cpu().detach().numpy().reshape(-1,1), 'magenta')
+                    self.writer.add_figure(f"data/test/resultados_pre", fig, i_epoch * len(train_dataloader) + it)                    
 
                 if self.scheduler is not None and self.scheduler_batch_step:
                     self._step_scheduler()

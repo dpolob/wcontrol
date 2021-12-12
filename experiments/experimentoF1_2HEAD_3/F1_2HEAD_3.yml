@@ -1,13 +1,20 @@
-experiment: "experimentoF1_2HEAD"
+experiment: "experimentoF1_2HEAD_3"
 descripcion: | 
-  72-72 con 2 heads
-  
+  72-144 con 2 heads
+  0.01 en decoder:lr
 prediccion: 
   - temperatura
   - hr
-  - clase_precipitacion
+  - clase_precipitacion_0
+  - clase_precipitacion_1
+  - clase_precipitacion_2
+  - clase_precipitacion_3
+  - clase_precipitacion_4
+  - clase_precipitacion_5
+  - clase_precipitacion_6
+  - clase_precipitacion_7
 
-pasado: 72
+pasado: 144
 futuro: 72
 paths:
   zmodel:
@@ -169,11 +176,14 @@ zmodel:
        'integraltermica', 'integralrain',
        'indiceangtrom', 'indicemartonne', 'indicelang', 'tempmacd', 'hrmacd',
        'precipitacionmacd', 
-       'dia', 'mes', 'hora', 'distancia', 'altitud',]
+       'dia', 'mes', 'hora', 'distancia', 'altitud',
+       'clase_precipitacion_0', 'clase_precipitacion_1', 'clase_precipitacion_2',
+       'clase_precipitacion_3', 'clase_precipitacion_4', 'clase_precipitacion_5',
+       'clase_precipitacion_6', 'clase_precipitacion_7']
     decoder:
-      lr: 0.025
+      lr: 0.01
       hidden_size: 100
-      dropout: 0.2
+      dropout: 0.1
       alpha: 0.5
       features:
       - dia
@@ -184,8 +194,15 @@ zmodel:
       nwp:
       - nwp_temperatura
       - nwp_hr
-      - clase_nwp_precipitacion
-      
+      - nwp_clase_precipitacion_0
+      - nwp_clase_precipitacion_1
+      - nwp_clase_precipitacion_2
+      - nwp_clase_precipitacion_3
+      - nwp_clase_precipitacion_4
+      - nwp_clase_precipitacion_5
+      - nwp_clase_precipitacion_6
+      - nwp_clase_precipitacion_7
+          
   dataloaders:
     train:
       enable: True
@@ -204,6 +221,10 @@ zmodel:
       use_checkpoint: best
   resultados:
     visualizacion:
+      prediccion:
+          - temperatura
+          - hr
+          - precipitacion
       muestras: "range" # random, all, list, range
       inicio: 0
       fin: "end"

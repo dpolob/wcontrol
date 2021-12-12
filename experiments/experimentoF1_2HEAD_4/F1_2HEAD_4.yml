@@ -1,14 +1,20 @@
-experiment: "experimentoF1_2HEAD_08"
+experiment: "experimentoF1_2HEAD_4"
 descripcion: | 
-  72-72 con 2 heads con alpha 08
+  72-72 con 2 heads
   
 prediccion: 
   - temperatura
   - hr
-  - precipitacion
-  - no_llueve
-  
-pasado: 72
+  - clase_precipitacion_0
+  - clase_precipitacion_1
+  - clase_precipitacion_2
+  - clase_precipitacion_3
+  - clase_precipitacion_4
+  - clase_precipitacion_5
+  - clase_precipitacion_6
+  - clase_precipitacion_7
+
+pasado: 144
 futuro: 72
 paths:
   zmodel:
@@ -160,7 +166,7 @@ zmodel:
       coefs: None
     scheduler: True
     encoder:
-      lr: 0.02
+      lr: 0.01
       rnn_num_layers: 1
       hidden_size: 100
       bidirectional: False
@@ -170,12 +176,15 @@ zmodel:
        'integraltermica', 'integralrain',
        'indiceangtrom', 'indicemartonne', 'indicelang', 'tempmacd', 'hrmacd',
        'precipitacionmacd', 
-       'dia', 'mes', 'hora', 'distancia', 'altitud', 'no_llueve']
+       'dia', 'mes', 'hora', 'distancia', 'altitud',
+       'clase_precipitacion_0', 'clase_precipitacion_1', 'clase_precipitacion_2',
+       'clase_precipitacion_3', 'clase_precipitacion_4', 'clase_precipitacion_5',
+       'clase_precipitacion_6', 'clase_precipitacion_7']
     decoder:
-      lr: 0.025
+      lr: 0.01
       hidden_size: 100
       dropout: 0.2
-      alpha: 0.8
+      alpha: 1.5
       features:
       - dia
       - mes
@@ -185,9 +194,14 @@ zmodel:
       nwp:
       - nwp_temperatura
       - nwp_hr
-      - nwp_precipitacion
-      - nwp_no_llueve
-  
+      - nwp_clase_precipitacion_0
+      - nwp_clase_precipitacion_1
+      - nwp_clase_precipitacion_2
+      - nwp_clase_precipitacion_3
+      - nwp_clase_precipitacion_4
+      - nwp_clase_precipitacion_5
+      - nwp_clase_precipitacion_6
+      - nwp_clase_precipitacion_7
   dataloaders:
     train:
       enable: True
@@ -206,6 +220,10 @@ zmodel:
       use_checkpoint: best
   resultados:
     visualizacion:
+      prediccion:
+        - temperatura
+        - hr
+        - precipitacion
       muestras: "range" # random, all, list, range
       inicio: 0
       fin: "end"

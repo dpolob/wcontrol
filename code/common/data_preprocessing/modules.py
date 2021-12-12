@@ -30,6 +30,7 @@ from sklearn.impute import IterativeImputer
 import common.predict.modules as predictor
 import common.utils.parser as parser
 from sklearn.preprocessing import PowerTransformer
+from sklearn.preprocessing import OneHotEncoder
 
 from datetime import datetime, timedelta
 import common.utils.indicesbioclimaticos as bio
@@ -420,13 +421,39 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
             if not no_NaNs(df):
                 tqdm.write("Se han generado NANs!!" + FAIL)
                 exit()
-  
+    
+    tqdm.write(f"\tAplicando clasificador:", end='')
+    bins = [0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 1.0]
+    ohe = OneHotEncoder(dtype=int, sparse=False)
+    # Necesitamos que todas las clases esten representadas para ello debo fit el transformer con todas
+    ohe.fit(np.arange(len(bins)).reshape(-1,1))
+    for df in dfs:
+        df['clase_precipitacion'] = df['precipitacion'].apply(lambda x: np.digitize(x, bins) - 1)
+        df['nwp_clase_precipitacion'] = df['nwp_precipitacion'].apply(lambda x: np.digitize(x, bins) - 1)
+
+        df_aux1 = pd.DataFrame(ohe.transform(df['clase_precipitacion'].values.reshape(-1,1)),
+                               columns=["clase_precipitacion_" + str(_) for _ in range(len(bins))])
+        df.drop(columns=['clase_precipitacion'], inplace=True)
+        for _ in range(len(bins)):
+            df['clase_precipitacion_' + str(_)] = df_aux1['clase_precipitacion_' + str(_)].values
+        
+        df_aux1 = pd.DataFrame(ohe.transform(df['nwp_clase_precipitacion'].values.reshape(-1,1)),
+                               columns=["nwp_clase_precipitacion_" + str(_) for _ in range(len(bins))])
+        df.drop(columns=['nwp_clase_precipitacion'], inplace=True)
+        for _ in range(len(bins)):
+            df['nwp_clase_precipitacion_' + str(_)] = df_aux1['nwp_clase_precipitacion_' + str(_)].values
+        
+        if not no_NaNs(df):
+            tqdm.write("Se han generado NANs!!" + FAIL)
+            exit()
+                
     tqdm.write(f"Generando metadatos ", end='')
     metadata = {}
     metadata["longitud"] = len(dfs)
     metadata["datasets"] = {}
     metadata["datasets"]["nombres"] = dfs_nombres
     metadata["datasets"]["longitud"] = [len(_) for _ in dfs]
+    metadata["datasets"]["columnas"] = [str(_.columns) for _ in dfs]
     metadata["CdG"] = [float(_) for _ in list(cdg)]
     metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
     metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
@@ -434,6 +461,7 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
     metadata['indice_max'] = max([_.index.max() for _ in dfs])
     metadata['escaladores'] = {}
     metadata['escaladores'] = parametros
+    
     tqdm.write(OK)
     
     return (dfs, metadata)

@@ -1,41 +1,50 @@
-# precipitacion acumulada DONE!
-# imputacion de resultados para NaNs (tengo muchos) DONE!
-#poner mape
-# def mape(actual, pred): 
-#     actual, pred = np.array(actual), np.array(pred)
-#     return np.mean(np.abs((actual - pred) / actual)) * 100
+# COSAS POR HACER
+- Salvar hyparams
+- Para el tema de bins hay mucho hardcode
+- seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
+- Revisar esto en trainer._loss_batch       
+´´´if pass_y:
+    y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+else:
+    y_pred = self.model(Xt, X, Yt, Y, P, teacher)´´´
 
-# corregir maxMSE y maxL1 porque no solo sacaban en máximo entre todas las series. Ahora se hace media
-# MAX(MEAN(error(reduction=none)))
+- Cambiar nombre a modules (es mu feo)
 
-# Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
+- Quitar todo lo de teacher forcing y duplicate teacher forcing
 
-#seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
+- Guardar hiperparametros con el modelo, para no tener que crear los Encoders y Decoders en el predict
 
+- Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout)
+- Algunos argumentos de entrada de se pueden obtener del encoder y el decoder
 
- Revisar esto en trainer._loss_batch       
-        if pass_y:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
-        else:
-            y_pred = self.model(Xt, X, Yt, Y, P, teacher)
-
-# tqdm en escalado del generarvariablesZmodel
-
-Cambiar nombre a modules (es mu feo)
-
-Quitar todo lo de teacher forcing y duplicate teacher forcing
-
-Guardar hiperparametros con el modelo, para no tener que crear los Encoders y Decoders en el predict
-
-Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout)
-Algunos argumentos de entrada de  model = module.EncoderDecoderWrapper(encoder=encoder,
+´´´model = module.EncoderDecoderWrapper(encoder=encoder,
                                     decoder_cell=decoder,
                                     output_size=OUTPUT_SIZE,
                                     output_sequence_len=FUTURO,
                                     teacher_forcing=cfg.zmodel.model.teacher_forcing,
                                     duplicate_teaching=cfg.zmodel.model.duplicate_teaching,
-                                    device=device)
-se pueden obtener del encoder y el decoder
+                                    device=device)´´´
 
 
-La salida X en el dataset no vale para nada si funciona 3salidas y aun asi creo que tampoco
+- La salida X en el dataset no vale para nada si funciona 3salidas y aun asi creo que tampoco
+
+# COSAS HECHAS
+- precipitacion acumulada. No ha valido
+- imputacion de resultados para NaNs (tengo muchos). No ha valido
+- Usar mape. Da muchos problemas para valores proximos a 0, mejor uso L1
+
+- corregir maxMSE y maxL1 porque no solo sacaban en máximo entre todas las series. Ahora se hace media
+- MAX(MEAN(error(reduction=none)))
+
+- Quitar las variables de tiempo relativas al dia de la semana (no hay estacionalidad) por lo que no pintan nada
+- Bins para crear los weights de crossentropyloss
+0    150541
+1      1621
+2       512
+3       249
+5       176
+4       121
+6        46
+7         1
+
+- tqdm en escalado del generarvariablesZmodel

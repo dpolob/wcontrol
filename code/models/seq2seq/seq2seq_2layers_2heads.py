@@ -75,7 +75,7 @@ class RNNEncoder(nn.Module):
 class DecoderCell(nn.Module):
     """Define una celda GRU"""
 
-    def __init__(self, input_feature_len: int, hidden_size: int, output_size: int=None, dropout: float = 0.2) -> None:
+    def __init__(self, input_feature_len: int, hidden_size: int, output_size: int=None, bins_len: int=8, dropout: float = 0.2) -> None:
         """
         Input:
             input_feature_len (int): Numero de features de entrada (Ft + Fnwp) Fnwp es la prediccion, en este caso (temp, hr, prec, no_llueve)
@@ -86,23 +86,23 @@ class DecoderCell(nn.Module):
 
         super().__init__()
         #SINGLE HEAD for temp and hr
+        
+        
         self.decoder_rnn_cell = nn.GRUCell(input_size=input_feature_len, hidden_size=hidden_size)
         self.temphr_head = nn.Sequential(nn.Linear(hidden_size, 50),
                                          nn.ReLU(),
-                                         nn.Linear(50, output_size - 2)  ## solo salida para temperatura y hr 2= 4 - 2
+                                         nn.Linear(50, output_size - bins_len)  ## solo salida para temperatura y hr 2= 4 - 2
         )
 
         # 2HEAD for rain
-        self.class_head = nn.Sequential(nn.Linear(hidden_size, 50), 
+        self.class_head = nn.Sequential(nn.Linear(hidden_size, hidden_size), 
                                        nn.ReLU(),
-                                       nn.Linear(50, 1),
-                                       nn.Sigmoid()
-        )
-        self.value_head = nn.Sequential(nn.Linear(hidden_size, 50), 
+                                       nn.Dropout(0.2),
+                                       nn.Linear(hidden_size, 50), 
                                        nn.ReLU(),
-                                       nn.Linear(50, 1)
-        ) 
-        
+                                       nn.Linear(50, 8)  # 8 bins!
+                                       )
+              
         #DROPOUT for hidden
         self.dropout = nn.Dropout(dropout)
         
@@ -114,16 +114,15 @@ class DecoderCell(nn.Module):
         Inputs:
             y (tensor): (N, Ft + Fnwp) Features de datos de entrada, compuesto de temporales + las predicciones nwp
         Outputs:
-            output (tensor): (N, Fout + 1 ) son 2 (temp + hr) + (valor rain + class_rain)
+            output (tensor): (N, Fout + 1 ) son 2 (temp + hr) + (class_rain)
             rnn_hidden (tensor): (N, HID) salida de la representacion de la red 
                 La salida hidden de la red es (D * NL, N, HID) y es convertida (N, HID) en el codigo
         """
         rnn_hidden = self.decoder_rnn_cell(y, prev_hidden)  # (N, HID)
         temphr_output = self.temphr_head(rnn_hidden)  # (N, 2)
         class_rain_output = self.class_head(rnn_hidden)  # (N, 1)
-        value_rain_output = self.value_head(rnn_hidden)  # (N, 1)
         
-        output = torch.cat([temphr_output, value_rain_output, class_rain_output], dim=-1)  # (N, Fout)
+        output = torch.cat([temphr_output, class_rain_output], dim=-1)  # (N, Fout)
         return output, self.dropout(rnn_hidden)  # (N,1), (N, HID)
 
 
@@ -156,7 +155,7 @@ class EncoderDecoderWrapper(nn.Module):
 
         Inputs:
             x_f (torch.tensor): Features de entrada (N, Lx, Ff)  Ff incluye las calculadas, climaticas y las temporales(Ft)
-            x (torch.tensor): Variables climaticas a predecir  (N, Lx, Fout)
+            x (torch.tensor): Variables climaticas a predecir  (N, Lx, Fout )
             y_t (torch.tensor): Features futuras de estacion y tiempo (N, Ly, Ft)
             y (torch.tensor): Features futuras climatica (N, Ly, Fout)
             p (torch.tensor): Features climaticas de prediccion (N, Ly, Fout)
@@ -171,21 +170,22 @@ class EncoderDecoderWrapper(nn.Module):
         decoder_hidden = encoder_hidden  # (N, HID)
         # (N, Ft + Fout) = (N, Ft) + (N, Fout) 
         decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), axis=1)
-
-        # elimino la componente extra que me sobra
-        y_t = y_t[:, 1:, :]
+ 
+         # elimino la componente extra que me sobra
+        y_t = y_t[:, :-1, :]
         if y is not None:
-            y = y[:, 1:, :]
+            y = y[:, :-1, :]
         if p is not None:
             p = p[:, :-1, :]
 
-        outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout) por 2HEAD
-        #  tf = self.teacher_forcing 
+
+        outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout (hr + temp + 8 clases)
+          #  tf = self.teacher_forcing 
         for i in range(self.output_sequence_len):
             # (N,1), (N, HID) = decoder((N,Ft + Fout), (N, HID))
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)
             outputs[:, i, :] = decoder_output  # la salida siempre es decoder_output, no es teacher o P
-            
+        
             
             # if i == self.duplicate_teaching:
             #    tf = self.teacher_forcing * 2

@@ -9,7 +9,7 @@ from pathlib import Path
 from attrdict import AttrDict
 from tqdm import tqdm
 
-import common.utils.parser as parser
+from common.utils.parser import parser
 
 @click.group()
 def cli():
@@ -36,23 +36,40 @@ def zmodel(file):
         print("Cargado archivo de predicciones")
     y_pred, y_real, y_nwp = predicciones['y_pred'], predicciones['y_real'], predicciones['y_nwp']
 
+
+    ##############################################
+    #### COSAS QUE HACER AQUI               ######
+    ##############################################
+    
     if isinstance(cfg.zmodel.resultados.visualizacion.muestras, str):  # all, random o range
         if cfg.zmodel.resultados.visualizacion.muestras == 'range':  # range
             inicio = cfg.zmodel.resultados.visualizacion.inicio
-            fin = len(predicciones) if cfg.zmodel.resultados.visualizacion.fin == 'end' else cfg.zmodel.resultados.visualizacion.fin
+            fin = len(y_pred) if cfg.zmodel.resultados.visualizacion.fin == 'end' else cfg.zmodel.resultados.visualizacion.fin
             paso = cfg.zmodel.resultados.visualizacion.paso
             muestras = range(inicio, fin, paso)
     
     plots_path = Path(cfg.paths.zmodel.viz) 
-    plots_path.mkdir(parents=True, exist_ok=True)    
+    plots_path.mkdir(parents=True, exist_ok=True)   
+    
+
     for idx in tqdm(muestras):
-        plt.plot(np.mean(y_real[idx], axis=0).reshape(-1,1), 'green')
-        plt.plot(np.mean(y_pred[idx], axis=0).reshape(-1,1), 'red')
-        plt.plot(np.mean(y_nwp[idx], axis=0).reshape(-1,1), 'magenta')
-        
-        plt.savefig(plots_path / f"{idx}.png", dpi=300)
-        plt.close()
-        
+        for prediccion in cfg.zmodel.resultados.visualizacion.prediccion:
+            if prediccion == 'temperatura':
+                plt.plot(np.mean(y_pred[idx, ..., 0], axis=0).reshape(-1,1), 'red')
+                plt.plot(np.mean(y_real[idx, ..., 0], axis=0).reshape(-1,1), 'green')
+                plt.plot(np.mean(y_nwp[idx,...,0], axis=0).reshape(-1,1), 'magenta')
+            elif prediccion == 'hr':
+                plt.plot(np.mean(y_pred[idx, ..., 1], axis=0).reshape(-1,1), 'red')
+                plt.plot(np.mean(y_real[idx, ..., 1], axis=0).reshape(-1,1), 'green')
+                plt.plot(np.mean(y_nwp[idx,...,1], axis=0).reshape(-1,1), 'magenta')
+            elif prediccion == 'precipitacion':
+                plt.plot(np.mean(np.argmax(y_pred[idx,...,2:], axis=-1), axis=0).reshape(-1,1), 'red')
+                plt.plot(np.mean(np.argmax(y_real[idx,...,2:], axis=-1), axis=0).reshape(-1,1), 'green')
+                plt.plot(np.mean(np.argmax(y_nwp[idx,...,2:], axis=-1), axis=0).reshape(-1,1), 'magenta')
+                  
+            plt.savefig(plots_path / f"{idx}_{prediccion}.png", dpi=300)
+            plt.close()
+            
         
 if __name__ == "__main__":
     cli()

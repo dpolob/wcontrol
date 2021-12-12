@@ -12,7 +12,7 @@ from pathlib import Path
 import torch
 
 import common.predict.modules as predictor
-import common.utils.parser as parser
+from common.utils.parser import parser
 
 
 import torch.multiprocessing
@@ -207,7 +207,9 @@ def zmodel(file):
             'indice_max': indice_max,
             'indice_min': indice_min
             }
-    y_pred, test_dataloader = predictor.predict(**kwargs)  # se devuelve un numpy (len(test), N, Ly, Fout), dataloader
+    y_pred, test_dataloader = predictor.predict(**kwargs)  # se devuelve una lista de numpy (len(test), N, Ly, Fout), dataloader
+    y_pred = np.array(y_pred)
+    
     assert y_pred.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
     assert y_pred.shape[3]==len(Fout), "Revisar y_pred.shape[3]!!!"
     assert y_pred.shape[2]==FUTURO, "Revisar y_pred.shape[2]!!!"
