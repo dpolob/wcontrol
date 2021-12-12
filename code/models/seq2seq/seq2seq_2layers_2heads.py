@@ -129,7 +129,7 @@ class DecoderCell(nn.Module):
 class EncoderDecoderWrapper(nn.Module):
     """Wrapper para el modelo"""
 
-    def __init__(self, encoder: RNNEncoder, decoder_cell: DecoderCell, output_size: int, output_sequence_len: int, teacher_forcing: float = 0.3, duplicate_teaching: int = 40, device: str = 'cpu') -> None:
+    def __init__(self, encoder: RNNEncoder, decoder_cell: DecoderCell, output_size: int, output_sequence_len: int, device: str = 'cpu') -> None:
         """ Definicion del modelo
 
         Inputs:
@@ -146,11 +146,9 @@ class EncoderDecoderWrapper(nn.Module):
         self.decoder_cell = decoder_cell
         self.output_size = output_size
         self.output_sequence_len = output_sequence_len
-        self.teacher_forcing = teacher_forcing
-        self.duplicate_teaching = duplicate_teaching
         self.device = device
 
-    def forward(self, x_f: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, p: torch.tensor = None, teacher: bool = None) -> torch.tensor:
+    def forward(self, x_f: torch.tensor, x: torch.tensor, y_t: torch.tensor, y: torch.tensor = None, p: torch.tensor = None) -> torch.tensor:
         """Propagacion
 
         Inputs:
@@ -159,7 +157,6 @@ class EncoderDecoderWrapper(nn.Module):
             y_t (torch.tensor): Features futuras de estacion y tiempo (N, Ly, Ft)
             y (torch.tensor): Features futuras climatica (N, Ly, Fout)
             p (torch.tensor): Features climaticas de prediccion (N, Ly, Fout)
-            teacher (bool, optional): Define si se usa el teacher. Defaults to None.
 
         Outputs:
             outputs: Salida de la red(N, Ly, Fout)
@@ -178,22 +175,10 @@ class EncoderDecoderWrapper(nn.Module):
         if p is not None:
             p = p[:, :-1, :]
 
-
         outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout (hr + temp + 8 clases)
-          #  tf = self.teacher_forcing 
         for i in range(self.output_sequence_len):
             # (N,1), (N, HID) = decoder((N,Ft + Fout), (N, HID))
             decoder_output, decoder_hidden = self.decoder_cell(decoder_input, decoder_hidden)
-            outputs[:, i, :] = decoder_output  # la salida siempre es decoder_output, no es teacher o P
-        
-            
-            # if i == self.duplicate_teaching:
-            #    tf = self.teacher_forcing * 2
-            # if (teacher) and (y is not None) and (i > 0) and (torch.rand(1) < tf):
-            #    decoder_input = torch.cat((y_t[:, i, :], y[:, i, :]), axis=1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
-            # else:
-            #    decoder_input = torch.cat((y_t[:, i, :], decoder_output), 1)  # (N,Ft in) + (N,Fout) = (N,Ft in + Fout)
-            
-            # asignacion de P
+            outputs[:, i, :] = decoder_output  # la salida siempre es decoder_output, no es P
             decoder_input = torch.cat((y_t[:, i, :], p[:, i, :]), axis=1)  # (N,Ft) + (N, Fout) = (N,Ft + Fout)
         return outputs  # (N, Ly, Fout)

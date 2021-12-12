@@ -174,8 +174,6 @@ def zmodel(file):
                                     decoder_cell=decoder,
                                     output_size=len(Fout),
                                     output_sequence_len=FUTURO,
-                                    teacher_forcing=cfg.zmodel.model.teacher_forcing,
-                                    duplicate_teaching=cfg.zmodel.model.duplicate_teaching,
                                     device=device)
     model = model.to(device)
 
@@ -202,7 +200,6 @@ def zmodel(file):
                               scheduler=None,
                               device=device,
                               scheduler_batch_step=True if cfg.zmodel.model.scheduler else False,
-                              pass_y=True,
                               checkpoint_folder= chkpts_path,
                               runs_folder= runs_path,
                               #additional_metric_fns={"L1_mean_loss": lf.LossFunction(loss='L1', reduction='mean')}

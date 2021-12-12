@@ -1,32 +1,29 @@
 # COSAS POR HACER
 - Salvar hyparams
 - Para el tema de bins hay mucho hardcode
-- seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
-- Revisar esto en trainer._loss_batch       
-´´´if pass_y:
-    y_pred = self.model(Xt, X, Yt, Y, P, teacher)
-else:
-    y_pred = self.model(Xt, X, Yt, Y, P, teacher)´´´
-
 - Cambiar nombre a modules (es mu feo)
-
-- Quitar todo lo de teacher forcing y duplicate teacher forcing
-
 - Guardar hiperparametros con el modelo, para no tener que crear los Encoders y Decoders en el predict
 
-- Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout)
-- Algunos argumentos de entrada de se pueden obtener del encoder y el decoder
+- Crear un wrapper que integre la creacion de decoder y encoder solo pasando (Ft, Ff, Fnwp, Fout) 
+No lo hago porque pierdo trazabilidad pero es buena técnica. Para hacer cuando optimice el codigo
+final
 
-´´´model = module.EncoderDecoderWrapper(encoder=encoder,
-                                    decoder_cell=decoder,
-                                    output_size=OUTPUT_SIZE,
-                                    output_sequence_len=FUTURO,
-                                    teacher_forcing=cfg.zmodel.model.teacher_forcing,
-                                    duplicate_teaching=cfg.zmodel.model.duplicate_teaching,
-                                    device=device)´´´
+- La salida X en el dataset no vale para nada si funciona 3salidas y aun asi creo que tampoco.
+Efectivamente se puede eliminar porque no se usa X para nada y solo consume recursos, pero...
+cuesta mucho eliminarlo y solo lo haré cuando optimice el codigo final.
+
+- Hacer bins dinamicos
+Solo si tengo mucho mucho tiempo
 
 
-- La salida X en el dataset no vale para nada si funciona 3salidas y aun asi creo que tampoco
+class Seq2SeqDataset(Dataset):
+    """
+    
+    REHACER ENTERO
+    etiquetaX es la prediccion 8temperatura, hr, precipitacion
+    etiquetaP es la del proveedor de NWP
+    etiquetaF son las features
+    etiquetaT son las temporales
 
 # COSAS HECHAS
 - precipitacion acumulada. No ha valido
@@ -48,3 +45,10 @@ else:
 7         1
 
 - tqdm en escalado del generarvariablesZmodel
+- seq2seq No hardcoding de la salida del decoder (N,1) -> (N, Fout)
+- Revisar esto en trainer._loss_batch       
+´´´if pass_y:
+    y_pred = self.model(Xt, X, Yt, Y, P, teacher)
+else:
+    y_pred = self.model(Xt, X, Yt, Y, P, teacher)´´´
+- Quitar todo lo de teacher forcing y duplicate teacher forcing

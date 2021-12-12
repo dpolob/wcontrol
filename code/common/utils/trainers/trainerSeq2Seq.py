@@ -34,7 +34,6 @@ class TorchTrainer():
         self.scheduler_batch_step = kwargs.get('scheduler_batch_step', False)
         self.additional_metric_fns = kwargs.get('additional_metric_fns', {})
         self.additional_metric_fns = self.additional_metric_fns.items()
-        self.pass_y = kwargs.get('pass_y', False)
         self.save_model = kwargs.get('save_model', False)
         self.save_model_path = kwargs.get('save_model_path', None)
         
@@ -157,35 +156,23 @@ class TorchTrainer():
             else:
                 self.scheduler.step()
         
-    def _loss_batch(self, Xf, X, Yt, Y, P,  teacher, optimize, pass_y, unitary_metrics: list=None, return_ypred=False, weights: list = None):
+    def _loss_batch(self, Xf, X, Yt, Y, P,  optimize, unitary_metrics: list=None, return_ypred=False, weights: list = None):
         Xf = Xf.to(self.device)
         X = X.to(self.device)
         Yt = Yt.to(self.device)
         Y = Y.to(self.device)
         P = P.to(self.device)
         
-         
-        if pass_y:
-            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
-        else:
-            y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P, teacher=teacher)
+        y_pred = self.model(x_f=Xf, x=X, y_t=Yt, y=Y, p=P)
         # definir la perdida para cada componente y debo quitar la componente 0 de Y
         loss_temp = self.loss_fn(y_pred[:, :, 0], Y[:, :-1, 0])
         loss_hr = self.loss_fn(y_pred[:, :, 1], Y[:, :-1:, 1])
-        # print(f"{y_pred[:, :, 2:].shape=}")
-        # print(f"{Y[:, 1:, 2].shape=}")
-        # print(f"{y_pred[:, :, 2:].reshape(-1, 72).shape=}")
-        # print(f"{Y[:, 1:, 2].reshape(-1).shape=}")
         weights = torch.tensor([1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]).to(self.device)
         clas_input = y_pred[:, :, 2:].reshape(-1, 8)  # y_pred(N, 72, 8) -> reshape(-1, 8) -> y_pred(N*72, 8), al final compara clases
-        clas_target = torch.argmax(Y[:, :-1, 2:], dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(N, 72, 8) -> argmax(dim=-1) -> (N, 72, 1) -> reshape(-1,1) -> (N*72, 1) -> squeeze() -> (N*72)
+        clas_target = torch.argmax(Y[:, :-1, 2:], dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(N, 72, 8) -> argmax(dim=-1) -> (N, 72) -> reshape(-1,1) -> (N*72, 1) -> squeeze() -> (N*72)
         loss_class_precipitacion = nn.CrossEntropyLoss(weight=weights)(clas_input, clas_target)
         loss = loss_temp + loss_hr + self.alpha * loss_class_precipitacion 
         losses = [loss_temp, loss_hr, loss_class_precipitacion]
-        
-        if unitary_metrics is not None:
-            
-            unitary_metrics = [_.item() for _ in losses]
         
         if optimize:
             loss.backward()
@@ -195,6 +182,7 @@ class TorchTrainer():
         del (Xf, X, Yt, Y, P, loss, losses)
     
         if unitary_metrics is not None:
+            unitary_metrics = [_.item() for _ in losses]
             if return_ypred:
                 return loss_value, unitary_metrics, y_pred
             else:
@@ -211,7 +199,7 @@ class TorchTrainer():
         loss_values = []
         with torch.no_grad():
             for Xf, X, Yt, Y, P in eval_bar:
-                loss_value = self._loss_batch(Xf, X, Yt, Y, P, teacher=False, optimize=False, pass_y=False)
+                loss_value = self._loss_batch(Xf, X, Yt, Y, P, optimize=False)
                 loss_values.append(loss_value)
                 # if len(loss_values[0]) > 1:
                 #     loss_value = np.mean([lv[0] for lv in loss_values])
@@ -241,7 +229,7 @@ class TorchTrainer():
                 Y = Y.to(self.device)
                 P = P.to(self.device)
 
-                y_pred = self.model(Xf, X, Yt, Y, P, teacher=False)
+                y_pred = self.model(Xf, X, Yt, Y, P)
                 #tqdm.write(y_
                 # pred.shape)
                 predictions.append(y_pred.cpu().numpy())
@@ -294,9 +282,7 @@ class TorchTrainer():
                                                 Yt=Yt,
                                                 Y=Y,
                                                 P=P,
-                                                teacher=True,
                                                 optimize=True,
-                                                pass_y=self.pass_y,
                                                 unitary_metrics=unitary_metrics,
                                                 return_ypred = True)
                 running_loss += loss

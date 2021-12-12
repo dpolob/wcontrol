@@ -158,8 +158,8 @@ zmodel:
     save_model: True
     plot_intermediate_results: True
     early_stop: 5
-    teacher_forcing: 0.0
-    duplicate_teaching: 480
+    # teacher_forcing: 0.0
+    # duplicate_teaching: 480
     loss_function:
       loss_fn: L1
       reduction: mean
