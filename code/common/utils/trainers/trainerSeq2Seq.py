@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 #from tqdm.notebook import tqdm   # FOR SCRIP
 import pickle
+from common.utils.hparams import save_hyperparameters
 
+    
 def save_dict(path, _dict):
     with open(path, 'wb') as handle:
         pickle.dump(_dict, handle)
@@ -49,7 +51,6 @@ class TorchTrainer():
             #tqdm.write('valid_losses file found!')
         else:
             self.valid_losses = {}
-    
     def _early_stopping(self) -> bool:
         """ Devuelve True si se cumplen las condiciones de early stopping
         ultimo epoch - mejor_epoch > valor definido en self.early_stop"""

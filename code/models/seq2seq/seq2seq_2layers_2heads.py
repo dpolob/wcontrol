@@ -25,6 +25,7 @@ class RNNEncoder(nn.Module):
         self.input_feature_len = input_feature_len
         self.num_layers = rnn_num_layers
         self.rnn_directions = 2 if bidirectional else 1
+        self.rnn_dropout = rnn_dropout
         self.gru = nn.GRU(
             num_layers=rnn_num_layers,
             input_size=input_feature_len,
@@ -86,7 +87,11 @@ class DecoderCell(nn.Module):
 
         super().__init__()
         #SINGLE HEAD for temp and hr
-        
+        self.input_feature_len = input_feature_len
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.bins_len = bins_len
+        self.dropout = dropout      
         
         self.decoder_rnn_cell = nn.GRUCell(input_size=input_feature_len, hidden_size=hidden_size)
         self.temphr_head = nn.Sequential(nn.Linear(hidden_size, 50),
@@ -137,8 +142,6 @@ class EncoderDecoderWrapper(nn.Module):
             decoder_cell (DecoderCell): Modelo de decoder a usar
             output_size (int): Numero de variables de salida (Fout)
             output_sequence_len (int): Longitud de la secuencia a predecir (Ly)
-            ## DEPRECATED teacher_forcing (float, optional): Probabilidad de uso del teacher. Defaults to 0.3.  
-            ## DEPRECATED duplicate_teaching (int, optional): Duplicar la probabilidad pasado un determinado punto en la secuencia. Defaults to 40.
             device (str, optional): Dispositivo. Defaults to 'cpu'.
         """
         super().__init__()

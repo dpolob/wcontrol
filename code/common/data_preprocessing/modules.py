@@ -376,21 +376,7 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
         
     tqdm.write(OK)
     
-    # tqdm.write(f"\tAplicando PowerTransformer", end='')
-    # rain_hr = pd.DataFrame()
-    # rain_hr['precipitacion'] = pd.concat([_['precipitacion'] for _ in dfs], axis=0)
-    # rain_hr['nwp_precipitacion'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    # rain_hr['hr'] = pd.concat([_['hr'] for _ in dfs], axis=0)
-    # rain_hr['nwp_hr'] = pd.concat([_['nwp_precipitacion'] for _ in dfs], axis=0)
-    # pt = PowerTransformer(method='yeo-johnson', standardize=False)
-    # pt.fit(rain_hr)
-    # for df in dfs:
-    #     df[pt.feature_names_in_] = pt.transform(df[pt.feature_names_in_])
-    #     if not no_NaNs(df):
-    #         tqdm.write("Se han generado NANs!!" + FAIL)
-    #         exit()
-    # tqdm.write(OK)
-    
+   
     tqdm.write(f"Aplicando RainTransformer", end='')
     for df in dfs:
         df['no_llueve'] = df['precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)

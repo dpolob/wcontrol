@@ -7,7 +7,6 @@ from attrdict import AttrDict
 from colorama import Fore, Style
 
 from common.utils.parser import parser
-#from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
 
 OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
