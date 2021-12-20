@@ -1,5 +1,5 @@
 # COSAS POR HACER
-- Salvar hyparams
+- Fijarse en el optim para renombrar ciertas cosas del modelo num_layer en encoder por ejemplo
 - Para el tema de bins hay mucho hardcode
 - Cambiar nombre a modules (es mu feo)
 - Guardar hiperparametros con el modelo, para no tener que crear los Encoders y Decoders en el predict
@@ -52,3 +52,4 @@ class Seq2SeqDataset(Dataset):
 else:
     y_pred = self.model(Xt, X, Yt, Y, P, teacher)´´´
 - Quitar todo lo de teacher forcing y duplicate teacher forcing
+- Salvar hyparams. Se guardan en el modelo con torch.save. Antes lo hacia mal
