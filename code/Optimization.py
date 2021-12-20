@@ -166,22 +166,21 @@ def objective(trial):
                               )
 
     start_epoch = 0
-    for i_epoch in tqdm(range(start_epoch, start_epoch + EPOCHS)):
+    for i_epoch in range(start_epoch, start_epoch + EPOCHS):
         model.train()
-        train_bar = tqdm(train_dataloader)
-        for (Xf, X, Yt, Y, P) in train_bar:
+        #train_bar = tqdm(train_dataloader)
+        for (Xf, X, Yt, Y, P) in train_dataloader:
             loss = trainer._loss_batch(Xf, X, Yt, Y, P, optimize=True)
-            train_bar.set_description(f"Loss: {loss}")
-            
+        print(f"Loss {i_epoch}: {loss}")    
         
         model.eval()
         loss_values = []
-        valid_bar = tqdm(valid_dataloader)
-        with torch.no_grad():
-            for Xf, X, Yt, Y, P in valid_bar:
-                loss_value = trainer._loss_batch(Xf, X, Yt, Y, P, optimize=False)
-                loss_values.append(loss_value)
-                valid_bar.set_description(f"V_Loss: {loss_value}")        
+        #valid_bar = tqdm(valid_dataloader)
+        for Xf, X, Yt, Y, P in valid_dataloader:
+            loss_value = trainer._loss_batch(Xf, X, Yt, Y, P, optimize=False)
+            loss_values.append(loss_value)
+                # valid_bar.set_description(f"V_Loss: {loss_value}")        
+        print(f"V_Loss {i_epoch}: {loss_value}")
         loss_value = np.mean(loss_values)
                     
         trial.report(loss_value, i_epoch)
