@@ -55,21 +55,18 @@ def pmodel(file):
         print(f"{file} no existe. Por favor defina un archivo con --file")
         exit()
     name = cfg["experiment"]
-    cfg = AttrDict(parser.parser_experiment(cfg, name))
+    cfg = AttrDict(parser(name, None)(cfg))
     output = Path(cfg.paths.pmodel.dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    estacion = list(cfg.pmodel.estaciones)[0]
-    escaladores = cfg.preprocesado.escaladores
-    outliers = cfg.preprocesado.outliers
-    
-    df, metadata = generarvariablesPmodel(estacion=list(cfg.pmodel.estaciones)[0], 
-                                estaciones=cfg.zmodel.estaciones, 
-                                outliers= cfg.preprocesado.outliers, cfg=cfg)
+    dfs, metadata = generarvariablesPmodel(estacion=list(cfg.pmodel.estaciones)[0], 
+                                          metadatos_zmodel_path=Path(cfg.paths.zmodel.dataset_metadata),
+                                          outliers= cfg.preprocesado.outliers,
+                                          cfg=cfg)
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     
     with open(output, 'wb') as handler:
-        pickle.safe_dump(df, handler)
+        pickle.safe_dump(dfs, handler)
     print(OK)
 
     

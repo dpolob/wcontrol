@@ -117,7 +117,6 @@ def temporales(df: pd.DataFrame= None, trig: bool=False) -> pd.DataFrame:
         if borrar_fecha: df.drop(columns=['fecha'], inplace=True)
     return df
 
-
 def check_variables_entrada(df: pd.DataFrame=None) -> bool:
     if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns:
         tqdm.write(FAIL)
@@ -447,71 +446,136 @@ def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor
     metadata['indice_max'] = max([_.index.max() for _ in dfs])
     metadata['escaladores'] = {}
     metadata['escaladores'] = parametros
+    metadata['bins'] = bins
     
     tqdm.write(OK)
     
     return (dfs, metadata)
 
-def generarvariablesPmodel(estacion:list=None, estaciones: list=None, escaladores: list=None, outliers: list=None, cfg: AttrDict=None) -> tuple:
-    # ruta = Path(estacion["ruta"])
-    # metricas = estacion["metricas"]
-    # tqdm.write(Fore.YELLOW + f"{estacion['nombre']}" + Style.RESET_ALL)
+def generarvariablesPmodel(estacion:list=None, metadatos_zmodel_path: Path=None, escaladores: list=None, outliers: list=None, cfg: AttrDict=None) -> tuple:
+    ruta = Path(estacion["ruta"])
+    metricas = estacion["metricas"]
+    tqdm.write(Fore.YELLOW + f"{estacion['nombre']}" + Style.RESET_ALL)
+    tqdm.write(f"\tLeyendo estacion desde {ruta}", end='')
+    if not ruta.is_file():
+        tqdm.write(f"No existe el archivo para {estacion['nombre']}")
+        tqdm.write(FAIL)
+        exit()
+    else:
+        df = pd.read_csv(ruta, sep=',', decimal='.', header='infer')
+        df['fecha'] = pd.to_datetime(df['fecha'], format=estacion["format"] if "format" in estacion.keys() else "%Y-%m-%d %H:%M:%S")
+        df.set_index('fecha', drop=True, inplace=True)
+        tqdm.write(OK)
+
+    tqdm.write(f"\tComprobando variables de entrada", end='')
+    if not check_variables_entrada(df):
+        exit()
     
-    # tqdm.write(f"\tLeyendo estacion desde {ruta}", end='')
-    # if not ruta.is_file():
-    #     tqdm.write(f"No existe el archivo para {estacion['nombre']}")
-    #     tqdm.write(FAIL)
-    #     exit()
+    tqdm.write(f"\tComprobando outliers", end='')
+    if not check_outliers(df, metricas, outliers):
+        exit()
+    tqdm.write(OK)
     
-    # df = pd.read_csv(ruta, sep=',', decimal='.', header='infer')
-    # df['fecha'] = pd.to_datetime(df['fecha'], format=estacion["format"])
-    # df.set_index('fecha', drop=True, inplace=True)
-    # tqdm.write(OK)
+    tqdm.write(f"\tResample a 1 hora", end='')
+    df = df.resample('1H').interpolate()
+    tqdm.write(OK)
     
-    # tqdm.write(f"\tComprobando variables de entrada", end='')
-    # if not check_variables_entrada(df):
-    #     exit()
+    tqdm.write(f"\tComprobando longitud del dataset mayor de un año", end='')
+    if not check_longitud(df, 365 * 24):
+        exit()
+    
+    tqdm.write(f"\tEliminando NaNs...", end='')
+    tqdm.write(f"{df.isna().sum().sum()}", end='')
+    df = quitar_nans(df)
+    tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
+    if df.isna().sum().sum() > 0:
+        tqdm.write("Se han generado NANs!!" + FAIL)
+        exit()
+    else:
+        tqdm.write(OK)
+    
+    tqdm.write(f"\tCalculando variables climáticas", end='')
+    var_bio, df = variables_bioclimaticas(df)
+    if var_bio is None:
+        exit()
         
-    # tqdm.write(f"\tComprobando outliers", end='')
-    # if not check_outliers(df, metricas, outliers):
-    #     exit()
-        
-    # tqdm.write(f"\tResample a 1 hora", end='')
-    # df = df.resample('1H').interpolate()
-    # tqdm.write(OK)
-  
-    # tqdm.write(f"\tComprobando longitud del dataset (mínimo 30 días)", end='')
-    # if not check_longitud(df, 30 * 24):
-    #     exit()
-    
-    # tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
-    # df['fecha'] = df.index
-    # df['dia'], df['mes'], df['hour'] = temporales(df['fecha'])
+    tqdm.write(f"\tCalculando MACD", end='')
+    var_macd, df = variables_macd(df)
+    if var_macd is None:
+        exit()
+       
+    tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
+    df = temporales(df)
+    if no_NaNs(df):
+        tqdm.write(OK)
+    else:
+        tqdm.write("Se han generado NANs!!" + FAIL)
+        exit()
+
+    tqdm.write(f"Organizando índices")
+    fecha_max = df['fecha'].max().to_pydatetime()
+    fecha_min = df['fecha'].min().to_pydatetime()
+    df.reset_index(drop=True, inplace=True)
+
+    # tqdm.write(f"\tRango de fechas ({fecha_min}, {fecha_max}")
+    # minimo = fecha_min.days * 24 + fecha_min.seconds / 3600
+    # maximo = fecha_max.days * 24 + fecha_max.seconds / 3600
+    # df.index = pd.RangeIndex(int(minimo), int(maximo) + 1)
     # df.drop(columns=['fecha'], inplace=True)
     # tqdm.write(OK)
-
-    # tqdm.write(f"\tEliminando NaNs...", end='')
-    # df = quitar_nans(df)
-    # if df is None:
-    #     exit()
+    # print(f"{maximo=}{minimo=}")
+   
+    tqdm.write(f"Aplicando RainTransformer", end='')
+    df['no_llueve'] = df['precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
+    df['nwp_no_llueve'] = df['nwp_precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
+    tqdm.write(OK)
     
-    # tqdm.write(f"\tCalculando variables climáticas", end='')
-    # var_bio, df = variables_bioclimaticas(df)
-    # if var_bio is None:
-    #     exit()
-
-    # tqdm.write(f"\tCalculando MACD", end='')
-    # var_macd, df = variables_macd(df)
-    # if var_macd is None:
-    #     exit()
+    tqdm.write(f"\tAplicando escalado:")
+    tqdm.write(f"Leyendo datos de escaladores desde {metadatos_zmodel_path}")
+    with open(metadatos_zmodel_path, 'r') as handler:
+        metadatos_zmodel = yaml.safe_load(handler)
+    parametros = dict()
+    for metrica in (['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd):
+        parametros[metrica] = dict()
+        parametros[metrica]['max'] = float(metadatos_zmodel['escalador']['max'])
+        parametros[metrica]['min'] = float(metadatos_zmodel['escalador']['min'])
+        scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
+        df[metrica] = scaler.transform(np.array(df[metrica].values))
+    if not no_NaNs(df):
+        tqdm.write("Se han generado NANs!!" + FAIL)
+        exit()
+    tqdm.write(OK)
     
-    # tqdm.write(f"\tCalculando distancias y altitudes", end='')
-    # with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
-    #     metadata = yaml.safe_load(handler)
-    # cdg = metadata["CdG"]
-    # df['distancia'] = haversine(lat1=estacion['latitud'], long1=estacion['longitud'], lat2=cdg[0], long2=cdg[1])
-    # df['altitud'] = estacion['altitud'] - cdg[2]
-    # tqdm.write(OK)
+    tqdm.write(f"\tAplicando clasificador:", end='')
+    bins = [0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 1.0]
+    ohe = OneHotEncoder(dtype=int, sparse=False)
+    # Necesitamos que todas las clases esten representadas para ello debo fit el transformer con todas
+    ohe.fit(np.arange(len(bins)).reshape(-1,1))
+    df['clase_precipitacion'] = df['precipitacion'].apply(lambda x: np.digitize(x, bins) - 1)
+    df_aux1 = pd.DataFrame(ohe.transform(df['clase_precipitacion'].values.reshape(-1,1)),
+                           columns=["clase_precipitacion_" + str(_) for _ in range(len(bins))])
+    df.drop(columns=['clase_precipitacion'], inplace=True)
+    for _ in range(len(bins)):
+        df['clase_precipitacion_' + str(_)] = df_aux1['clase_precipitacion_' + str(_)].values
+        
+    if not no_NaNs(df):
+     tqdm.write("Se han generado NANs!!" + FAIL)
+     exit()
+    
+    tqdm.write(f"Generando metadatos ", end='')
+    metadata = {}        
+    metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
+    metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
+    metadata['indice_min'] = df.index.min()
+    metadata['indice_max'] = df.index.max()
+    metadata['escaladores'] = {}
+    metadata['escaladores'] = parametros
+    metadata['bins'] = bins
+    
+    
+    
+    dfs = [df]  # para que sea compatible con Dataset
+    return dfs, metadata
  
     # tqdm.write(f"\tCalculando prediccion a nivel de zona", end='')
     # try:

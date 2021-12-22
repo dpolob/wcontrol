@@ -44,10 +44,10 @@ def objective(trial):
     decoder_dropout = trial.suggest_float('decoder_dropout', 0.0, 0.3)
     
     #dataset_pasado = trial.suggest_int(dataset_pasado', 10, 20)
-    dataset_pasado = trial.suggest_int('dataset_pasado', 72, 1800)
+    dataset_pasado = trial.suggest_int('dataset_pasado', 72, 900)
     trainer_alpha = trial.suggest_float('trainer_alpha', 0.01, 0.99)
-    encoder_optimizer_name = trial.suggest_categorical("encoder_optimizer_name", ["Adam", "AdamW", "RMSprop", "Adamax", "SGD"])
-    decoder_optimizer_name = trial.suggest_categorical("decoder_optimizer_name", ["Adam", "AdamW", "RMSprop", "Adamax", "SGD"])
+    encoder_optimizer_name = trial.suggest_categorical("encoder_optimizer_name", ["Adam", "AdamW", "RMSprop", "Adamax"])
+    decoder_optimizer_name = trial.suggest_categorical("decoder_optimizer_name", ["Adam", "AdamW", "RMSprop", "Adamax"])
    
     encoder_lr = trial.suggest_float("encoder_lr", 0.001, 0.1, log=True)
     decoder_lr = trial.suggest_float("decoder_lr", 0.001, 0.1, log=True)
