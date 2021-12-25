@@ -512,33 +512,30 @@ def generarvariablesPmodel(estacion:list=None, metadatos_zmodel_path: Path=None,
         tqdm.write("Se han generado NANs!!" + FAIL)
         exit()
 
-    tqdm.write(f"Organizando índices")
-    fecha_max = df['fecha'].max().to_pydatetime()
-    fecha_min = df['fecha'].min().to_pydatetime()
+    tqdm.write(f"\tOrganizando índices")
+    fecha_max = df.index.max().to_pydatetime()
+    fecha_min = df.index.min().to_pydatetime()
     df.reset_index(drop=True, inplace=True)
 
-    # tqdm.write(f"\tRango de fechas ({fecha_min}, {fecha_max}")
-    # minimo = fecha_min.days * 24 + fecha_min.seconds / 3600
-    # maximo = fecha_max.days * 24 + fecha_max.seconds / 3600
-    # df.index = pd.RangeIndex(int(minimo), int(maximo) + 1)
-    # df.drop(columns=['fecha'], inplace=True)
-    # tqdm.write(OK)
-    # print(f"{maximo=}{minimo=}")
+    tqdm.write(f"\tAgregar predicciones (fake)", end='')
+    df['nwp_temperatura'] = df['temperatura'],
+    df['nwp_hr'] = df['hr']
+    df['nwp_precipitacion'] = df['precipitacion']
+    tqdm.write(OK)
    
-    tqdm.write(f"Aplicando RainTransformer", end='')
+    tqdm.write(f"\tAplicando RainTransformer", end='')
     df['no_llueve'] = df['precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
-    df['nwp_no_llueve'] = df['nwp_precipitacion'].apply(lambda x: 1 if x <= 0.05 else 0)
     tqdm.write(OK)
     
-    tqdm.write(f"\tAplicando escalado:")
-    tqdm.write(f"Leyendo datos de escaladores desde {metadatos_zmodel_path}")
+    tqdm.write(f"\tAplicando escalado:", end='')
     with open(metadatos_zmodel_path, 'r') as handler:
         metadatos_zmodel = yaml.safe_load(handler)
+    
     parametros = dict()
     for metrica in (['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd):
         parametros[metrica] = dict()
-        parametros[metrica]['max'] = float(metadatos_zmodel['escalador']['max'])
-        parametros[metrica]['min'] = float(metadatos_zmodel['escalador']['min'])
+        parametros[metrica]['max'] = float(metadatos_zmodel['escaladores'][metrica]['max'])
+        parametros[metrica]['min'] = float(metadatos_zmodel['escaladores'][metrica]['min'])
         scaler = Escalador(Xmax=parametros[metrica]['max'], Xmin=parametros[metrica]['min'], min=0, max=1, auto_scale=False)
         df[metrica] = scaler.transform(np.array(df[metrica].values))
     if not no_NaNs(df):
@@ -559,10 +556,22 @@ def generarvariablesPmodel(estacion:list=None, metadatos_zmodel_path: Path=None,
         df['clase_precipitacion_' + str(_)] = df_aux1['clase_precipitacion_' + str(_)].values
         
     if not no_NaNs(df):
-     tqdm.write("Se han generado NANs!!" + FAIL)
-     exit()
+        tqdm.write("Se han generado NANs!!" + FAIL)
+        exit()
+    tqdm.write(OK)
     
-    tqdm.write(f"Generando metadatos ", end='')
+    tqdm.write(f"\tActualizando distancias y altitudes contra el CdG", end='')
+    cdg = metadatos_zmodel["CdG"]
+    
+    df['distancia'] = haversine(lat1=list(cfg.pmodel.estaciones)[0]['latitud'], long1=list(cfg.pmodel.estaciones)[0]['longitud'],
+                                lat2=cdg[0], long2=cdg[1])
+    df['altitud'] = list(cfg.pmodel.estaciones)[0]['altitud'] - cdg[2]
+    tqdm.write(OK)
+    
+    
+        
+    tqdm.write(OK)
+    tqdm.write(f"\tGenerando metadatos ", end='')
     metadata = {}        
     metadata['fecha_min'] = datetime.strftime(fecha_min, format="%Y-%m-%d %H:%M:%S")
     metadata['fecha_max'] = datetime.strftime(fecha_max, format="%Y-%m-%d %H:%M:%S")
@@ -571,6 +580,7 @@ def generarvariablesPmodel(estacion:list=None, metadatos_zmodel_path: Path=None,
     metadata['escaladores'] = {}
     metadata['escaladores'] = parametros
     metadata['bins'] = bins
+    tqdm.write(OK)
     
     
     

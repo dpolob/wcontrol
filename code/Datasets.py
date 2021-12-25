@@ -66,7 +66,12 @@ def pmodel(file):
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     
     with open(output, 'wb') as handler:
-        pickle.safe_dump(dfs, handler)
+        pickle.dump(dfs, handler)
+    print(OK)
+    
+    print(f"Guardando metadatos en {cfg.paths.pmodel.dataset_metadata}", end='')                    
+    with open(Path(cfg.paths.pmodel.dataset_metadata), 'w') as handler:
+        yaml.safe_dump(metadata, handler, allow_unicode=True)
     print(OK)
 
     
