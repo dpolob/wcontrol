@@ -79,13 +79,13 @@ def zmodel(file):
  
     test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
     y_pred = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-    
+    y_real = np.empty_like(y_pred)
     assert y_pred.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
     assert y_pred.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
     assert y_pred.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
    
     # Creamos la matriz y de salida real, con el mismo shape que las predicciones
-    y_real = np.empty_like(y_pred)
+    
     y_nwp = np.empty_like(y_pred)
     for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
         # hay que quitarles la componente 0 y pasarlos a numpy

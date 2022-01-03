@@ -58,11 +58,14 @@ def pmodel(file):
     cfg = AttrDict(parser(name, None)(cfg))
     output = Path(cfg.paths.pmodel.dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+        dataset_metadata = yaml.safe_load(handler)
 
-    dfs, metadata = generarvariablesPmodel(estacion=list(cfg.pmodel.estaciones)[0], 
-                                          metadatos_zmodel_path=Path(cfg.paths.zmodel.dataset_metadata),
-                                          outliers= cfg.preprocesado.outliers,
-                                          cfg=cfg)
+    dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.pmodel.estaciones), 
+                                           outliers = cfg.preprocesado.outliers,
+                                           proveedor= cfg.zmodel.proveedor[0],
+                                           CdG=list(dataset_metadata["CdG"]))
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     
     with open(output, 'wb') as handler:

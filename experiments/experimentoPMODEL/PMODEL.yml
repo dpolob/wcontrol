@@ -30,11 +30,12 @@ paths:
   pmodel:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
-    #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
-    # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
-    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/"
-    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/"
-  
+    pmodel_train: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_train.pickle"
+    pmodel_valid: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_valid.pickle"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/{{prediccion}}"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/{{prediccion}}"
+    model: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/model_{{prediccion}}.pth"
+    
 preprocesado:
   outliers:
     temperatura:
@@ -247,20 +248,45 @@ pmodel:
     use_cuda: True
     save_model: True
     plot_intermediate_results: True
-    early_stop: 5
+    early_stop: 3
    
     temperatura:
       name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
       epochs: 25
       loss_function:
         loss_fn: L1
         reduction: mean
         coefs: None
-    
+      lr: 0.005
+    hr:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.005
+    precipitacion:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.005
   dataloaders:
     train:
       enable: True
-      fecha_inicio: "2020-03-15 00:00:00"
+      fecha_inicio: "2020-03-04 00:00:00"
       fecha_fin: "2021-01-15 23:00:00"
       shuffle: True
     validation:

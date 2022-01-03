@@ -1,4 +1,20 @@
 # COSAS POR HACER
+
+
+
+
+- CAMBIAR: 
+    def _early_stopping(self, epoch_without_resuming: int) -> bool:
+        """ Devuelve True si se cumplen las condiciones de early stopping
+        ultimo epoch - mejor_epoch > valor definido en self.early_stop"""
+        last_epoch_index = len(self.valid_losses)
+                
+        if last_epoch_index > self.early_stop and epoch_without_resuming > self.early_stop:
+            best_epoch_index = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
+            if (last_epoch_index - best_epoch_index) > self.early_stop:
+                return True
+        return False
+            
 - Fijarse en el optim para renombrar ciertas cosas del modelo num_layer en encoder por ejemplo
 - Para el tema de bins hay mucho hardcode
 - Cambiar nombre a modules (es mu feo)
@@ -14,6 +30,187 @@ cuesta mucho eliminarlo y solo lo haré cuando optimice el codigo final.
 
 - Hacer bins dinamicos
 Solo si tengo mucho mucho tiempo
+
+- Torch manual seed y numpy seed poner al principio del script Train
+
+- ALGO QUE NO SE DEBE PERDER
+def pmodel(file):
+    
+    try:
+        with open(file, 'r') as handler:
+            cfg = yaml.safe_load(handler)
+            name = cfg["experiment"]
+            cfg = AttrDict(parser(name, None)(cfg))
+            print(f"Usando {file} como archivo de configuracion")
+        with open(Path(cfg.paths.pmodel.dataset_metadata), 'r') as handler:
+            metadata = yaml.safe_load(handler)
+            print("Leidos metadatos del dataset")
+        with open(Path(cfg.paths.pmodel.dataset), 'rb') as handler:
+            datasets = pickle.load(handler)
+            print(f"Usando {cfg.paths.pmodel.dataset} como archivo de datos procesados de estaciones")
+    except:
+        print(f"{file} no existe o no existe el archivo de metadatos o no existe el archivo de datos de estaciones")
+        exit()
+
+
+    print(f"Usando {cfg.paths.pmodel.runs} como ruta para runs")
+    print(f"Usando {cfg.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
+    
+    # Parte general de variables     
+    device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
+    PASADO = cfg.pasado
+    FUTURO = cfg.futuro
+
+    # Generar las predicciones
+    kwargs_prediccion= {
+        'name': name,
+        'device': 'cuda' if cfg.zmodel.model.use_cuda else 'cpu',
+        'path_checkpoints': cfg.paths.zmodel.checkpoints,
+        'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
+        'path_model' : cfg.paths.zmodel.model,
+        }
+
+    ## Generar train
+    try:
+        train_predictions = pickle.load(open(Path(cfg.paths.pmodel.zmodel_predictions_train), "rb"))
+        print(f"Cargango datos de train desde el modelo zmodel desde {cfg.paths.pmodel.zmodel_predictions_train}")
+    except (OSError, IOError) as e:
+        print(f"Generando datos de train desde el modelo zmodel")
+        kwargs_dataloader = {
+            'datasets': datasets,
+            'fecha_inicio_test': datetime.strptime(cfg.pmodel.dataloaders.train.fecha_inicio, "%Y-%m-%d %H:%M:%S"),
+            'fecha_fin_test': datetime.strptime(cfg.pmodel.dataloaders.train.fecha_fin, "%Y-%m-%d %H:%M:%S"),
+            'fecha_inicio': datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S"),
+            'pasado': cfg.pasado,
+            'futuro': cfg.futuro,
+            'etiquetaX': list(cfg.prediccion),
+            'etiquetaF': list(cfg.zmodel.model.encoder.features),
+            'etiquetaT': list(cfg.zmodel.model.decoder.features),
+            'etiquetaP': list(cfg.zmodel.model.decoder.nwp),
+            'indice_max': metadata['indice_max'],
+            'indice_min': metadata['indice_min']
+            }
+        dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+        y_pred = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(dataset), N, Ly, Fout) N=1
+        y_pred = np.squeeze(y_pred, axis=1)
+        print(f"{y_pred.shape=}")
+        y_real = np.empty_like(y_pred)
+        for i, (_, _, _, Y, P) in enumerate(tqdm(dataloader)):
+            # hay que quitarles la componente 0 y pasarlos a numpy
+            y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
+            y_pred[i, ...] = P[:, 1:, :].numpy()
+        train_predictions = [y_pred, y_real]
+        with open(Path(cfg.paths.pmodel.zmodel_predictions_train), 'wb') as handler:
+            pickle.dump(train_predictions, handler)
+   
+    ## Generar valid
+    try:
+        valid_predictions = pickle.load(open(Path(cfg.paths.pmodel.zmodel_predictions_valid), "rb"))
+        print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.zmodel_predictions_valid}")
+    except (OSError, IOError) as e:
+        print(f"Generando datos de validacion desde el modelo zmodel")
+        kwargs_dataloader = {
+            'datasets': datasets,
+            'fecha_inicio_test': datetime.strptime(cfg.pmodel.dataloaders.validation.fecha_inicio, "%Y-%m-%d %H:%M:%S"),
+            'fecha_fin_test': datetime.strptime(cfg.pmodel.dataloaders.validation.fecha_fin, "%Y-%m-%d %H:%M:%S"),
+            'fecha_inicio': datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S"),
+            'pasado': cfg.pasado,
+            'futuro': cfg.futuro,
+            'etiquetaX': list(cfg.prediccion),
+            'etiquetaF': list(cfg.zmodel.model.encoder.features),
+            'etiquetaT': list(cfg.zmodel.model.decoder.features),
+            'etiquetaP': list(cfg.zmodel.model.decoder.nwp),
+            'indice_max': metadata['indice_max'],
+            'indice_min': metadata['indice_min']
+            }
+        dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+        y_pred = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(dataset), N, Ly, Fout) N=1
+        y_pred = np.squeeze(y_pred, axis=1)
+        print(f"{y_pred.shape=}")
+        y_real = np.empty_like(y_pred)
+        for i, (_, _, _, Y, P) in enumerate(tqdm(dataloader)):
+            # hay que quitarles la componente 0 y pasarlos a numpy
+            y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
+            y_pred[i, ...] = P[:, 1:, :].numpy()
+        valid_predictions = [y_pred, y_real]
+        with open(Path(cfg.paths.pmodel.zmodel_predictions_valid), 'wb') as handler:
+            pickle.dump(valid_predictions, handler)
+    
+    # Parte especifica temperatura
+    EPOCHS = cfg.pmodel.model.temperatura.epochs
+    kwargs_loss = cfg.pmodel.model.temperatura.loss_function
+    
+    ## Generar dataset de train y validacion
+    TRAIN = cfg.zmodel.dataloaders.train.enable
+    VALIDATION = cfg.zmodel.dataloaders.validation.enable
+    print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
+    
+    try:
+        shuffle = cfg.pmodel.dataloaders.train.shuffle
+    except:
+        shuffle = True
+    if TRAIN:
+        train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_predictions, componentes = [0]),
+                                      sampler=sa_pmodel.PModelSampler(datasets=train_predictions, batch_size=1, shuffle=shuffle),    
+                                      batch_size=None,
+                                      num_workers=2)
+    try:
+        shuffle = cfg.pmodel.dataloaders.validation.shuffle
+    except:
+        shuffle = True
+    if VALIDATION:
+        valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_predictions, componentes = [0]),    
+                                      sampler=sa_pmodel.PModelSampler(datasets=valid_predictions, batch_size=1, shuffle=shuffle),
+                                      batch_size=None,
+                                      num_workers=2)
+        
+    print(f"Dataset de train: {len(train_dataloader)}")
+    print(f"Dataset de validacion: {len(valid_dataloader)}")
+
+    torch.manual_seed(420)
+    np.random.seed(420)
+
+    model = md_pmodel.RedGeneral(Fin=72, Fout=72, n_layers=3, device=device)
+    model = model.to(device)
+    ## Funciones loss
+    kwargs_loss = cfg.pmodel.model.temperatura.loss_function
+    loss_fn = lf.LossFunction(**kwargs_loss)
+    model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
+    
+    trainer = tr_pmodel.TorchTrainer(model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
+                              checkpoint_folder= cfg.paths.pmodel.checkpoints,
+                              runs_folder= cfg.paths.pmodel.runs,
+                              save_model= cfg.pmodel.model.temperatura.save_model,
+                              save_model_path=cfg.paths.pmodel.model_temp,
+                              early_stop=cfg.pmodel.model.temperatura.early_stop)
+
+    if TRAIN and VALIDATION:
+        trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=cfg.pmodel.model.temperatura.plot_intermediate_results)
+    else:
+        trainer.train(EPOCHS, train_dataloader, resume_only_model=True, resume=True, plot=cfg.pmodel.model.temperatura.plot_intermediate_results)
+    # # for it, (Xt, X, Yt, Y) in enumerate(train_dataloader):
+    # #     encoder_optimizer.zero_grad()
+    # #     decoder_optimizer.zero_grad()
+    # #     print(it, Xt.shape, X.shape, Yt.shape, Y.shape)
+    # #     ypred = model(Xt, X, Yt, Y)
+    # #     loss = MSE_mean(ypred,Y)
+    # #     loss.backward() # Does backpropagation and calculates gradients
+    # #     encoder_optimizer.step() # Updates the weights accordingly
+    # #     decoder_optimizer.step()
+    # #     if it==85:
+    # #         print(it, ": ", loss.item() )
+    # #         print("Xt:", np.any(np.isnan(Xt.numpy())))
+    # #         print("X:", np.any(np.isnan(X.numpy())))
+    # #         print("Yt:", np.any(np.isnan(Yt.numpy())))
+    # #         print("Y:", np.any(np.isnan(Y.numpy())))
+    # #         print("ypred:", ypred)
+
+    with open(Path(cfg.paths.pmodel.checkpoints) / "valid_losses.pickle", 'rb') as handler:
+        valid_losses = pickle.load(handler)
+    if valid_losses != {}:
+        best_epoch = sorted(valid_losses.items(), key=lambda x:x[1])[0][0]
+        print(f"Mejor loss de validacion: {best_epoch}")
+
 
 
 class Seq2SeqDataset(Dataset):

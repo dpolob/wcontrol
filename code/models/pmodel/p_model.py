@@ -1,45 +1,26 @@
+from unicodedata import bidirectional
 import torch
 import torch.nn as nn
 
 
 class RedGeneral(nn.Module):
-    """Define una Red Feedforward para la temperatura en una parcela"""
+    # """Define una Red Feedforward para la temperatura en una parcela"""
 
-    def __init__(self, Fin: int=None, Fout: int=None, n_layers: int=None, device: str='cpu') -> None:
-        """Constructor
-
-        Args:
-            Fin (int): Numero de entradas. Defaults to None.
-            Fout (int): Numero de salidas. Defaults to None.
-            n_layers (int): Numero de capas intermedias. Defaults to None.
-            device (str, optional):. Defaults to 'cpu'.
-        """
+    def __init__(self, Fin: int=None, Fout: int=None, n_layers: int=None, hidden_size: int=100, gru_num_layers: int=2) -> None:
+    
         super().__init__()
-        self.n_layers = n_layers
-        self.Fin = Fin
-        self.Fout = Fout
-        self.device = device
-        
-        assert self.n_layers > 1, "El numero de capas debe ser mayor a 1"
-        
+        self.gru = nn.GRU(Fin, hidden_size=hidden_size, num_layers=gru_num_layers, batch_first = True)
         layers = []
-        in_features = self.Fin
-        for i in range(self.n_layers - 1):
+        in_features = hidden_size
+        for i in range(n_layers):
             out_features = in_features
             layers.append(torch.nn.Linear(in_features, out_features))
             layers.append(torch.nn.ReLU())
             in_features = out_features
-        layers.append(torch.nn.Linear(in_features, self.Fout))
+        layers.append(torch.nn.Linear(in_features, Fout))
         self.head = torch.nn.Sequential(*layers)
-
-
-    def forward(self, input_seq: torch.tensor) -> torch.tensor:
-        """Propagacion de la red
-
-        Args:
-            input_seq (torch.tensor): Datos de entrada (1, Ly)
-
-        Returns:
-            torch.tensor: Datos de salida (1, Ly)
-        """
-        return self.head(input_seq)
+            
+    def forward(self, input_seq):
+        gru_out, _ = self.gru(input_seq)
+        out  = self.head(gru_out)
+        return out
