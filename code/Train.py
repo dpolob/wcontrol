@@ -17,6 +17,7 @@ import common.predict.modules as predictor
 import copy
 
 from common.utils.parser import parser
+from common.utils.kwargs_gen import generar_kwargs
 from common.utils.datasets import dataset_seq2seq as ds
 from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_seq2seq as sa
@@ -32,53 +33,7 @@ np.random.seed(420)
 SI = Fore.GREEN + "SI" + Style.RESET_ALL
 NO = Fore.RED + "NO" + Style.RESET_ALL
 
-def generar_kwargs(model: str=None, dataloader: bool=None, fase: str=None, cfg: AttrDict=None, **kwargs) -> dict:
-    """Genera los argumentos para las diferentes funciones, evitando repetir codigo
 
-    Args:
-        model (str, optional): 'zmodel' o 'pmodel'
-        dataloader (bool, optional): Si true genera argumentos para un dataloader
-        fase (str, optional): 'validation' para dataset de validacion, 'train' para dataset de train. Defaults to None.
-        cfg (AttrDict, optional): archivo de configuracion
-        **kwargs (dict): parametros opcionales necesarios
-
-    Returns:
-        dict: diccionario kwargs 
-    """
-    if model not in ['zmodel', 'pmodel'] or fase not in ['validation', 'train'] or cfg is None:
-        print("la funcion generar_kwargs no tiene los parametros correctos")
-        exit()
-    
-    if dataloader:
-        metadata = kwargs.get('metadata', None)
-        datasets = kwargs.get('datasets', None)
-
-        if metadata is None or datasets is None:
-            print("la funcion generar_kwargs no tiene los parametros correctos")
-            exit()
-        if model == 'pmodel' and fase == 'train':
-            handler = cfg.pmodel.dataloaders.train
-        elif model == 'pmodel' and fase == 'validation':
-            handler = cfg.pmodel.dataloaders.validation
-        elif model == 'zmodel' and fase == 'train':
-            handler = cfg.zmodel.dataloaders.train
-        elif model == 'zmodel' and fase == 'validation':
-            handler = cfg.zmodel.dataloaders.validation
-        
-        data = {'datasets': datasets, 'fecha_inicio_test': datetime.strptime(handler.fecha_inicio, "%Y-%m-%d %H:%M:%S"), 
-                'fecha_fin_test': datetime.strptime(handler.fecha_fin, "%Y-%m-%d %H:%M:%S"), 
-                'fecha_inicio': datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S"),
-                'pasado': cfg.pasado,
-                'futuro': cfg.futuro,
-                'etiquetaX': list(cfg.prediccion), 'etiquetaF': list(cfg.zmodel.model.encoder.features),
-                'etiquetaT': list(cfg.zmodel.model.decoder.features), 'etiquetaP': list(cfg.zmodel.model.decoder.nwp),
-                'indice_max': metadata['indice_max'], 'indice_min': metadata['indice_min']
-                }  
-   
-    else:
-        raise NotImplementedError
-    
-    return data
     
 
 @click.group()
@@ -326,7 +281,7 @@ def pmodel(file, temp, hr, rain):
         print(f"Cargango datos de train desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_train}")
     except (OSError, IOError) as e:
         print(f"Generando datos de train...")
-        kwargs_dataloader = generar_kwargs(model='pmodel', dataloader=True, fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
@@ -344,7 +299,7 @@ def pmodel(file, temp, hr, rain):
         print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}")
     except (OSError, IOError) as e:
         print(f"Generando datos de validacion...")
-        kwargs_dataloader = generar_kwargs(model='pmodel', dataloader=True, fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
