@@ -27,10 +27,14 @@ class generar_kwargs():
             handler = cfg.pmodel.dataloaders.train
         elif model == 'pmodel' and fase == 'validation':
             handler = cfg.pmodel.dataloaders.validation
+        elif model == 'pmodel' and fase == 'test':
+            handler = cfg.pmodel.dataloaders.test
         elif model == 'zmodel' and fase == 'train':
             handler = cfg.zmodel.dataloaders.train
         elif model == 'zmodel' and fase == 'validation':
             handler = cfg.zmodel.dataloaders.validation
+        elif model == 'zmodel' and fase == 'test':
+            handler = cfg.zmodel.dataloaders.test
         else:
             raise NotImplementedError
         
