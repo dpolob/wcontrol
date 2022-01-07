@@ -19,7 +19,7 @@ class generar_kwargs():
         metadata = kwargs.get('metadata', None)
         datasets = kwargs.get('datasets', None)
         
-        if model not in ['zmodel', 'pmodel'] or fase not in ['validation', 'train'] or cfg is None or metadata is None or datasets is None:
+        if model not in ['zmodel', 'pmodel'] or fase not in ['validation', 'train', 'test'] or cfg is None or metadata is None or datasets is None:
             print("la funcion generar_kwargs no tiene los parametros correctos")
             exit()
         

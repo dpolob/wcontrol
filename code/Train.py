@@ -299,7 +299,7 @@ def pmodel(file, temp, hr, rain):
         print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}")
     except (OSError, IOError) as e:
         print(f"Generando datos de validacion...")
-        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
@@ -359,10 +359,10 @@ def pmodel(file, temp, hr, rain):
         model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.pmodel.model.temperatura.lr, weight_decay=cfg.pmodel.model.temperatura.lr / 10)
         
         trainer = tr_pmodel.TorchTrainer(model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
-                                checkpoint_folder= cfg.paths.pmodel.checkpoints,
-                                runs_folder= cfg.paths.pmodel.runs,
+                                checkpoint_folder= Path(cfg.paths.pmodel.checkpoints),
+                                runs_folder= Path(cfg.paths.pmodel.runs),
                                 save_model= cfg.pmodel.model.temperatura.save_model,
-                                save_model_path=cfg.paths.pmodel.model,
+                                save_model_path=Path(cfg.paths.pmodel.model),
                                 early_stop=cfg.pmodel.model.temperatura.early_stop)
 
         if TRAIN and VALIDATION:
@@ -416,11 +416,11 @@ def pmodel(file, temp, hr, rain):
         model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.pmodel.model.hr.lr, weight_decay=cfg.pmodel.model.hr.lr / 10)
         
         trainer = tr_pmodel.TorchTrainer(model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
-                                checkpoint_folder= cfg.paths.pmodel.checkpoints,
-                                runs_folder= cfg.paths.pmodel.runs,
-                                save_model= cfg.pmodel.model.hr.save_model,
-                                save_model_path=cfg.paths.pmodel.model,
-                                early_stop=cfg.pmodel.model.hr.early_stop)
+                                checkpoint_folder= Path(cfg.paths.pmodel.checkpoints),
+                                runs_folder= Path(cfg.paths.pmodel.runs),
+                                save_model= cfg.pmodel.model.temperatura.save_model,
+                                save_model_path=Path(cfg.paths.pmodel.model),
+                                early_stop=cfg.pmodel.model.temperatura.early_stop)
 
         if TRAIN and VALIDATION:
             trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=cfg.pmodel.model.hr.plot_intermediate_results)
@@ -432,7 +432,6 @@ def pmodel(file, temp, hr, rain):
         if valid_losses != {}:
             best_epoch = sorted(valid_losses.items(), key=lambda x:x[1])[0][0]
             print(f"\tMejor loss de validacion: {best_epoch}")
-
     if rain:
         print("Entrando modelo de precipitacion...")
         cfg = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
@@ -474,11 +473,11 @@ def pmodel(file, temp, hr, rain):
         model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.pmodel.model.precipitacion.lr, weight_decay=cfg.pmodel.model.precipitacion.lr / 10)
         
         trainer = tr_pmodel.TorchTrainer(model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
-                                checkpoint_folder= cfg.paths.pmodel.checkpoints,
-                                runs_folder= cfg.paths.pmodel.runs,
-                                save_model= cfg.pmodel.model.precipitacion.save_model,
-                                save_model_path=cfg.paths.pmodel.model,
-                                early_stop=cfg.pmodel.model.precipitacion.early_stop)
+                                checkpoint_folder= Path(cfg.paths.pmodel.checkpoints),
+                                runs_folder= Path(cfg.paths.pmodel.runs),
+                                save_model= cfg.pmodel.model.temperatura.save_model,
+                                save_model_path=Path(cfg.paths.pmodel.model),
+                                early_stop=cfg.pmodel.model.temperatura.early_stop)
 
         if TRAIN and VALIDATION:
             trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, rain=True, plot=cfg.pmodel.model.precipitacion.plot_intermediate_results)

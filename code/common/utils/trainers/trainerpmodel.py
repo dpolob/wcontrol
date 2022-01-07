@@ -24,10 +24,12 @@ class TorchTrainer():
         self.device = device
         self.optimizer = optimizer
 
-        self.checkpoint_path = Path(kwargs.get('checkpoint_folder', None))
-        self.checkpoint_path.mkdir(parents=True, exist_ok=True)
-        self.runs_path = Path(kwargs.get('runs_folder', None))
-        self.runs_path.mkdir(parents=True, exist_ok=True)
+        self.checkpoint_path = kwargs.get('checkpoint_folder', None)
+        if self.checkpoint_path is not None: 
+            self.checkpoint_path.mkdir(parents=True, exist_ok=True)
+        self.runs_path = kwargs.get('runs_folder', None)
+        if self.runs_path is not None: 
+            self.runs_path.mkdir(parents=True, exist_ok=True)
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 50)
         self.writer = None  # se inicializa en el train, para predict no hay 
@@ -147,7 +149,7 @@ class TorchTrainer():
         X = X.to(self.device)
         Y = Y.to(self.device)
         
-        y_pred = self.model(input_seq=X)
+        y_pred = self.model(X)
         if rain:
             Y = torch.argmax(Y, dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(1, 72, 8) -> argmax(dim=-1) -> (1, 72) -> reshape(-1,1) -> (72, 1) -> squeeze() -> (72)
             y_pred = y_pred.squeeze()  # y_pred(1, 72, 8) -> squeeze(axis=0) -> (72, 8)
@@ -182,7 +184,7 @@ class TorchTrainer():
             for X, Y in tqdm(dataloader):
                 X = X.to(self.device)
                 Y = Y.to(self.device)
-                y_pred = self.model(X, Y)
+                y_pred = self.model(X)
                 predictions.append(y_pred.cpu().numpy())
         return predictions
 

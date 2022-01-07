@@ -17,9 +17,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, dataloader
 
 from common.utils.datasets import dataset_seq2seq as ds
+from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_seq2seq as sa
+from common.utils.datasets import sampler_pmodel as sa_pmodel
 from common.utils.trainers import trainerSeq2Seq as tr
+from common.utils.trainers import trainerpmodel as tr_pmodel
 from common.utils.loss_functions import lossfunction as lf
+import models.pmodel.p_model as md_pmodel
 
 
 import torch.multiprocessing
@@ -47,7 +51,7 @@ def generar_test_dataset(**kwargs) -> DataLoader:
  
     x = (fecha_inicio_test - inicio).days * 24 + (fecha_inicio_test - inicio).seconds / 3600
     y = (fecha_fin_test - inicio).days * 24 + (fecha_fin_test - inicio).seconds / 3600
-    print(f"Generando dataset de test desde {x} a {y}")
+    print(f"Generando dataset desde {x} a {y}")
     
     # dfs_test = [_.loc[(_.index >= x ) & (_.index <= y), :] for _ in datasets] con esta instruccion
     # estamos limitando el dataset. La primera prediccion sera desde la fecha indicada + PASADO (de esto
@@ -83,11 +87,12 @@ def generar_test_dataset(**kwargs) -> DataLoader:
     return test_dataloader
 
 
-def predict(test_dataloader: DataLoader=None, **kwargs) -> np.ndarray:
+def predict(test_dataloader: DataLoader=None, tipo: str='zmodel', **kwargs) -> np.ndarray:
     """Carga el modelo y realiza la prediccion con el dataset especificado
 
     Args:
         test_dataloader (DataLoader, optional): Datos sobre los que realizar la predicción. Defaults to None.
+        tipo (str, optional): Selecciona si es modelo 'zmodel' o 'pmodel'. Defauls to 'zmodel'
 
     Returns:
         [nd.array]: Prediccion con shape(len(test), N, Ly, Fout)
@@ -102,15 +107,22 @@ def predict(test_dataloader: DataLoader=None, **kwargs) -> np.ndarray:
     model = torch.load(Path(path_model) , map_location='cpu')
     model.to(device)
 
-    trainer = tr.TorchTrainer(name=name,
+    if tipo == 'zmodel':
+        trainer = tr.TorchTrainer(name=name,
                               model=model,
                               device=device,
                               checkpoint_folder= Path(path_checkpoints),
                               )
-   
+    if tipo == 'pmodel':
+        trainer = tr_pmodel.TorchTrainer(model=model, 
+                                        device=device,
+                                        checkpoint_folder= Path(path_checkpoints)
+                                        )
+       
     if use_checkpoint == 'best':
         trainer._load_best_checkpoint()
     else:
         trainer._load_checkpoint(epoch=use_checkpoint, only_model=True)
     y_pred = trainer.predict(test_dataloader)  # se devuelve una lista de numpy (len(test), N, Ly, Fout), dataloader
     return np.array(y_pred)
+
