@@ -5,32 +5,26 @@ import numpy as np
 from datetime import datetime
 from attrdict import AttrDict
 from tqdm import tqdm
-from colorama import Fore, Back, Style
+from colorama import Fore
 from pathlib import Path
 
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
+
 from torch.utils.data import DataLoader
 import common.predict.modules as predictor
 import copy
 
 from common.utils.parser import parser
 from common.utils.kwargs_gen import generar_kwargs
-from common.utils.datasets import dataset_seq2seq as ds
 from common.utils.datasets import dataset_pmodel as ds_pmodel
-from common.utils.datasets import sampler_seq2seq as sa
 from common.utils.datasets import sampler_pmodel as sa_pmodel
-from common.utils.trainers import trainerSeq2Seq as tr
-from common.utils.trainers import trainerpmodel as tr_pmodel
-from common.utils.loss_functions import lossfunction as lf
-import models.pmodel.p_model as md_pmodel
-import importlib
-
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
+
+torch.manual_seed(420)
+np.random.seed(420)
 
 @click.group()
 def main():

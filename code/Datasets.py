@@ -7,7 +7,7 @@ from attrdict import AttrDict
 from colorama import Fore, Style
 
 from common.utils.parser import parser
-from common.data_preprocessing.modules import generarvariablesZmodel, generarvariablesPmodel
+from common.data_preprocessing.modules import generar_variables
 
 OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
 FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
@@ -25,12 +25,12 @@ def zmodel(file):
             cfg = yaml.safe_load(handler)
         print(f"Usando {file} como archivo de configuracion")
     except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
+        print(f"{file} no existe. Por favor defina un archivo con --file {FAIL}")
         exit()
     
     name = cfg["experiment"]
     cfg = AttrDict(parser(name, None)(cfg))
-    dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.zmodel.estaciones), 
+    dfs, metadata = generar_variables(estaciones=list(cfg.zmodel.estaciones), 
                                            outliers = cfg.preprocesado.outliers,
                                            proveedor= cfg.zmodel.proveedor[0])
     output = Path(cfg.paths.zmodel.dataset)
@@ -52,7 +52,7 @@ def pmodel(file):
             cfg = yaml.safe_load(handler)
         print(f"Usando {file} como archivo de configuracion")
     except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
+        print(f"{file} no existe. Por favor defina un archivo con --file {FAIL}")
         exit()
     name = cfg["experiment"]
     cfg = AttrDict(parser(name, None)(cfg))
@@ -62,7 +62,7 @@ def pmodel(file):
     with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
         dataset_metadata = yaml.safe_load(handler)
 
-    dfs, metadata = generarvariablesZmodel(estaciones=list(cfg.pmodel.estaciones), 
+    dfs, metadata = generar_variables(estaciones=list(cfg.pmodel.estaciones), 
                                            outliers = cfg.preprocesado.outliers,
                                            proveedor= cfg.zmodel.proveedor[0],
                                            CdG=list(dataset_metadata["CdG"]))

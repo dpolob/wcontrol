@@ -1,7 +1,6 @@
-# %%
 import matplotlib.pyplot as plt
 import pickle
-import pandas as pd
+
 import numpy as np
 import click
 import yaml
@@ -10,11 +9,15 @@ from pathlib import Path
 from attrdict import AttrDict
 from tqdm import tqdm
 from typing import Union
+from colorama import Style, Fore
 
 from common.utils.parser import parser
 
+OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
+FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
 
 def generar_muestras(muestras: Union[str, list], inicio: int, fin: Union[str, int], paso: int , y_pred: np.ndarray ) -> list:
+    """Genera un lista de las muestras a pintar cuando se obtienen los resultados"""
         
     f = len(y_pred) if fin == 'end' else fin
     if isinstance(muestras, list):
@@ -38,7 +41,7 @@ def main():
 @main.command()                                           
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def zmodel(file):
-    
+    """Codigo para generar resultados para el modelo zonal"""
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
@@ -55,23 +58,10 @@ def zmodel(file):
         predicciones = pickle.load(handler)
         print("Cargado archivo de predicciones")
     y_pred, y_real, y_nwp = predicciones['y_pred'], predicciones['y_real'], predicciones['y_nwp']
-
-
-    ##############################################
-    #### COSAS QUE HACER AQUI               ######
-    ##############################################
-    
-    if isinstance(cfg.zmodel.resultados.visualizacion.muestras, str):  # all, random o range
-        if cfg.zmodel.resultados.visualizacion.muestras == 'range':  # range
-            inicio = cfg.zmodel.resultados.visualizacion.inicio
-            fin = len(y_pred) if cfg.zmodel.resultados.visualizacion.fin == 'end' else cfg.zmodel.resultados.visualizacion.fin
-            paso = cfg.zmodel.resultados.visualizacion.paso
-            muestras = range(inicio, fin, paso)
-    
+    muestras = generar_muestras(**cfg.pmodel.resultados, y_pred=y_pred)
     plots_path = Path(cfg.paths.zmodel.viz) 
     plots_path.mkdir(parents=True, exist_ok=True)   
     
-
     for idx in tqdm(muestras):
         for prediccion in cfg.zmodel.resultados.visualizacion.prediccion:
             if prediccion == 'temperatura':
@@ -108,12 +98,6 @@ def pmodel(file, temp, hr, rain):
     epoch = cfg["pmodel"]["dataloaders"]["test"]["use_checkpoint"]
     cfg = AttrDict(parser(name, epoch)(cfg))
 
-
-    ##############################################
-    #### COSAS QUE HACER AQUI               ######
-    ##############################################
-    #GENERAR MUESTRAS
-    
     cfg_previo = copy.deepcopy(dict(cfg))
     if not temp and not hr and not rain:
         print("No se ha definido que predecir. Ver pmodel --help")

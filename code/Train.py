@@ -279,8 +279,9 @@ def pmodel(file, temp, hr, rain):
     try:
         train_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_train), "rb"))
         print(f"Cargango datos de train desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_train}")
-    except (OSError, IOError) as e:
+    except:
         print(f"Generando datos de train...")
+        Path(cfg.paths.pmodel.pmodel_train).parent.mkdir(parents=True, exist_ok=True)
         kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
@@ -297,8 +298,9 @@ def pmodel(file, temp, hr, rain):
     try:
         valid_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_valid), "rb"))
         print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}")
-    except (OSError, IOError) as e:
+    except:
         print(f"Generando datos de validacion...")
+        Path(cfg.paths.pmodel.pmodel_valid).parent.mkdir(parents=True, exist_ok=True)
         kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))

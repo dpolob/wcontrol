@@ -253,7 +253,7 @@ def leer_archivo(ruta: Path=None):
     df = pd.read_csv(ruta, sep=',', decimal='.', header='infer')
     return df
         
-def generarvariablesZmodel(estaciones: list=None, outliers: list=None, proveedor: dict=None, CdG: tuple=None) -> tuple:
+def generar_variables(estaciones: list=None, outliers: list=None, proveedor: dict=None, CdG: tuple=None) -> tuple:
     """Wrapper para la generacion del dataset para el modelo zonal
 
     Args:
