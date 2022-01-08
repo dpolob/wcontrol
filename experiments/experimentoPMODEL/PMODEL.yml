@@ -16,10 +16,11 @@ prediccion:
 
 pasado: 144
 futuro: 72
+
 paths:
   zmodel:
-    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_estaciones.pickle"
-    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_estaciones.yaml"
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
     # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
     runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
@@ -28,13 +29,18 @@ paths:
     viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
     
   pmodel:
-    dataset: "/home/diego/weather-control/data/processed/dataset_pmodel.pickle"
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
-    #zmodel_predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/"
-    # esta ruta se coloca fuera de la carpeta del experimento porque son datos comunes
-    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/"
-    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/"
-  
+    pmodel_train: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_train.pickle"
+    pmodel_valid: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_valid.pickle"
+    pmodel_test: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_test.pickle"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/outputs/{{prediccion}}/{{epoch}}/prediccion_test.pickle"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/{{prediccion}}"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/{{prediccion}}"
+    model: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/model_{{prediccion}}.pth"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/outputs/{{prediccion}}/{{epoch}}/viz/"
+
+    
 preprocesado:
   outliers:
     temperatura:
@@ -244,15 +250,59 @@ pmodel:
       latitud: 42.3320800
       altitud: 782
   model:
-    name: "pmodel"
-    epochs: 40
     use_cuda: True
-    save_model: True
-    plot_intermediate_results: True
-    use_checkpoint_from_zmodel: 'best'
+    
+    temperatura:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.005
+    hr:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.005
+    precipitacion:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.005
   dataloaders:
     train:
       enable: True
-      fecha_inicio: "2020-03-02 00:00:00" # no puede ser el comienzo del archivo (2020-02-27) dejar al menos dejar pasados dias
-      fecha_fin: "2021-08-11 23:00:00" # no puede ser el final del archivo (2021-08-15) dejar al menso futuros dias
-   
+      fecha_inicio: "2020-03-04 00:00:00"
+      fecha_fin: "2021-01-15 23:00:00"
+      shuffle: True
+    validation:
+      enable: True
+      fecha_inicio: "2021-01-16 00:00:00"
+      fecha_fin: "2021-03-31 23:00:00"
+      shuffle: True
+    test:
+      enable: True
+      fecha_inicio: "2021-04-01 00:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
+      use_checkpoint: best
+  resultados:
+    muestras: "range" # random, all, list, range
+    inicio: 0
+    fin: "end"
+    paso: 50
