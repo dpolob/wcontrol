@@ -263,8 +263,8 @@ def objectivepmodel(trial):
             for X, Y in valid_dataloader:
                 loss_value = trainer._loss_batch(X, Y, optimize=False)
                 loss_values.append(loss_value)
-        loss_value = np.mean(loss_values)
-        print(f"V_Loss {i_epoch}: {loss_value}")
+            loss_value = np.mean(loss_values)
+            print(f"V_Loss {i_epoch}: {loss_value}")
                     
         trial.report(loss_value, i_epoch)
         if trial.should_prune():

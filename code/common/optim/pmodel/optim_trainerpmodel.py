@@ -56,15 +56,13 @@ class TorchTrainer(BaseTrainer):
         
     def evaluate(self, dataloader, rain=False):
         self.model.eval()
-        eval_bar = tqdm(dataloader, leave=False)
         loss_values = []
         with torch.no_grad():
-            for X, Y in eval_bar:
+            for X, Y in dataloader:
                 loss_value = self._loss_batch(X, Y, optimize=False, rain=rain)
                 loss_values.append(loss_value)
                     
         loss_value = np.mean(loss_values)
-        eval_bar.set_description("evaluation loss %.2f" % loss_value)
         return loss_value
     
     def predict(self, dataloader):
@@ -79,52 +77,25 @@ class TorchTrainer(BaseTrainer):
         return predictions
 
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False, rain=False):
-        self.writer = SummaryWriter(self.runs_path)
         start_epoch = 0
-        epoch_without_resuming = 0
         if resume:
             loaded_epoch = self._load_checkpoint(only_model=resume_only_model)
             if loaded_epoch:
                 start_epoch = loaded_epoch
-        for i_epoch, epoch_without_resuming in zip(tqdm(range(start_epoch, start_epoch + epochs), leave=True), range(0, epochs)):
+        for i_epoch in tqdm(range(start_epoch, start_epoch + epochs)):
             self.model.train()
             running_loss = 0
             training_losses = []
-            training_bar = tqdm(train_dataloader, leave=False)
-            for it, (X, Y) in enumerate(training_bar):
+            for it, (X, Y) in enumerate(train_dataloader):
                 loss, y_pred = self._loss_batch(X=X, Y=Y, optimize=True, return_ypred = True, rain=rain)
                 running_loss += loss
                 training_losses.append(loss)
-                training_bar.set_description("loss %.4f" % loss)
-                if it % 100 == 99:
-                    self.writer.add_scalar('training loss', running_loss / 100, i_epoch * len(train_dataloader) + it)
-                    running_loss = 0
-                if plot and not rain and it % 100 == 99:
-                    fig =plt.figure(figsize=(13,6))
-                    plt.plot(X.cpu().detach().numpy().reshape(-1,1), 'magenta')
-                    plt.plot(y_pred.cpu().detach().numpy().reshape(-1,1), 'red')
-                    plt.plot(Y.cpu().detach().numpy().reshape(-1,1), 'green')
-                    self.writer.add_figure(f"data/test/resultados", fig, i_epoch * len(train_dataloader) + it)
-                if plot and rain and it % 100 == 99:
-                    fig =plt.figure(figsize=(13,6))
-                    plt.plot(torch.argmax(X, dim=-1).cpu().detach().numpy().reshape(-1,1), 'magenta')
-                    plt.plot(torch.argmax(Y, dim=-1).cpu().detach().numpy().reshape(-1,1), 'green')
-                    plt.plot(torch.argmax(y_pred, dim=-1).cpu().detach().numpy().reshape(-1,1), 'red')
-                    self.writer.add_figure(f"data/test/resultados", fig, i_epoch * len(train_dataloader) + it)
-            tqdm.write(f'Training loss at epoch {i_epoch + 1} - {np.mean(training_losses)}')
             if valid_dataloader is not None:
                 valid_loss = self.evaluate(valid_dataloader, rain=rain)
                 self.writer.add_scalar('validation loss', valid_loss, i_epoch)
-                tqdm.write(f'Valid loss at epoch {i_epoch + 1}- {valid_loss}')
                 self.valid_losses[i_epoch + 1] = valid_loss
-            if (i_epoch + 1) % self.train_checkpoint_interval == 0:
-                self._save_checkpoint(i_epoch + 1)
-            if valid_dataloader is not None and self.early_stop is not None and self._early_stopping(epoch_without_resuming):
-                tqdm.write("Se ha alcanzado la condicion de early stopping!!!!")
-                break
-        if self.keep_best_checkpoint:
-            self._keep_best_checkpoint()
-            
+           
+                   
     def predict_one(self) -> Any:
         return super().predict_one()
             
