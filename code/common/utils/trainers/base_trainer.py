@@ -32,10 +32,11 @@ class BaseTrainer(ABC):
         if self.save_model:
             torch.save(self.model, pathlib.Path(self.save_model_path))
             
-        if (self.checkpoint_path/'valid_losses.pickle').is_file() and self.checkpoint_path is not None:
-            self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb')) 
-        else:
-            self.valid_losses = {}
+        if self.checkpoint_path is not None:
+            if (self.checkpoint_path/'valid_losses.pickle').is_file() and self.checkpoint_path is not None:
+                self.valid_losses = pickle.load(open(self.checkpoint_path/'valid_losses.pickle', 'rb')) 
+            else:
+                self.valid_losses = {}
             
     def _save_dict(self, path: pathlib.Path, _dict: dict) -> None:
         with open(path, 'wb') as handle:
