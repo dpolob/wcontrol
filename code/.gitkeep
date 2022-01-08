@@ -1,2 +1,4 @@
 zmodel.db
-pmodel.db
+pmodel_temp.db
+pmodel_hr.db
+pmodel_rain.db
