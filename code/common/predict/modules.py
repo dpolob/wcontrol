@@ -1,30 +1,16 @@
-import click
-import yaml
-import pickle
 import numpy as np
 import pandas as pd
-from datetime import datetime
-from attrdict import AttrDict
-from tqdm import tqdm
-import importlib
 
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 from pathlib import Path
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, dataloader
+from torch.utils.data import DataLoader
 
 from common.utils.datasets import dataset_seq2seq as ds
-from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_seq2seq as sa
-from common.utils.datasets import sampler_pmodel as sa_pmodel
 from common.utils.trainers import trainerSeq2Seq as tr
 from common.utils.trainers import trainerpmodel as tr_pmodel
-from common.utils.loss_functions import lossfunction as lf
-import models.pmodel.p_model as md_pmodel
-
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -98,7 +84,6 @@ def predict(test_dataloader: DataLoader=None, tipo: str='zmodel', **kwargs) -> n
         [nd.array]: Prediccion con shape(len(test), N, Ly, Fout)
     """
 
-    name = kwargs.get('name', None)
     device = kwargs.get('device', None)
     path_checkpoints = kwargs.get('path_checkpoints', None)
     use_checkpoint = kwargs.get('use_checkpoint', None)
@@ -108,16 +93,13 @@ def predict(test_dataloader: DataLoader=None, tipo: str='zmodel', **kwargs) -> n
     model.to(device)
 
     if tipo == 'zmodel':
-        trainer = tr.TorchTrainer(name=name,
-                              model=model,
-                              device=device,
-                              checkpoint_folder= Path(path_checkpoints),
-                              )
+        trainer = tr.TorchTrainer(model=model,
+                                  device=device,
+                                  checkpoint_folder= path_checkpoints)
     if tipo == 'pmodel':
         trainer = tr_pmodel.TorchTrainer(model=model, 
                                         device=device,
-                                        checkpoint_folder= Path(path_checkpoints)
-                                        )
+                                        checkpoint_folder= path_checkpoints)
        
     if use_checkpoint == 'best':
         trainer._load_best_checkpoint()

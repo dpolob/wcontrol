@@ -5,11 +5,9 @@ import numpy as np
 
 from datetime import datetime
 from attrdict import AttrDict
-from colorama import Fore, Back, Style
 from pathlib import Path
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 

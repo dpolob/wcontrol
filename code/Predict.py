@@ -1,20 +1,17 @@
 import click
 import yaml
 import pickle
+import torch
+import copy
 import numpy as np
 from datetime import datetime
 from attrdict import AttrDict
 from tqdm import tqdm
 from colorama import Fore
 from pathlib import Path
-
-
-import torch
-
 from torch.utils.data import DataLoader
-import common.predict.modules as predictor
-import copy
 
+import common.predict.modules as predictor
 from common.utils.parser import parser
 from common.utils.kwargs_gen import generar_kwargs
 from common.utils.datasets import dataset_pmodel as ds_pmodel
@@ -25,6 +22,8 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 torch.manual_seed(420)
 np.random.seed(420)
+OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
+FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
 
 @click.group()
 def main():
@@ -37,52 +36,29 @@ def zmodel(file):
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
+            name = cfg["experiment"]
+            epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
+            cfg = AttrDict(parser(name, epoch)(cfg))
         print(f"Usando {file} como archivo de configuracion")
-    except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
-    name = cfg["experiment"]
-    epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
-    cfg = AttrDict(parser(name, epoch)(cfg))
-
-    try:
         with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
             datasets = pickle.load(handler)
         print(f"Usando {cfg.paths.zmodel.dataset} como archivo de datos procesados de estaciones")
-    except:
-        print(Fore.RED + "Por favor defina un archivo de datos procesados")
+        with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+            metadata = yaml.safe_load(handler)
+        print("Leidos metadatos del dataset")
+    except Exception as e:
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.zmodel.dataset} \
+            con los datasets para el modelo zonal o {cfg.paths.zmodel.dataset_metadata} de metadatos del dataset del \
+            modelo zonal. Mas info: {e}")
         exit()
     
     if not cfg.zmodel.dataloaders.test.enable:
         print("El archivo no tiene definido dataset para test")
         exit()
     
-    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
-        metadata = yaml.safe_load(handler)
-    print("Leidos metadatos del dataset")
     print(f"Inicio del dataset en {metadata['fecha_min']}")
-    
-    kwargs_dataloader = {
-        'datasets': datasets,
-        'fecha_inicio_test': datetime.strptime(cfg.zmodel.dataloaders.test.fecha_inicio, "%Y-%m-%d %H:%M:%S"),
-        'fecha_fin_test': datetime.strptime(cfg.zmodel.dataloaders.test.fecha_fin, "%Y-%m-%d %H:%M:%S"),
-        'fecha_inicio': datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S"),
-        'pasado': cfg.pasado,
-        'futuro': cfg.futuro,
-        'etiquetaX': list(cfg.prediccion),
-        'etiquetaF': list(cfg.zmodel.model.encoder.features),
-        'etiquetaT': list(cfg.zmodel.model.decoder.features),
-        'etiquetaP': list(cfg.zmodel.model.decoder.nwp),
-        'indice_max': metadata['indice_max'],
-        'indice_min': metadata['indice_min']
-        }
-    
-    kwargs_prediccion= {
-        'name': name,
-        'device': 'cuda' if cfg.zmodel.model.use_cuda else 'cpu',
-        'path_checkpoints': cfg.paths.zmodel.checkpoints,
-        'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
-        'path_model' : cfg.paths.zmodel.model,
-        } 
+    kwargs_dataloader = generar_kwargs()._dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+    kwargs_prediccion = generar_kwargs()._predict(modelo='zmodel', cfg=cfg)
  
     test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
     y_pred = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
@@ -90,9 +66,6 @@ def zmodel(file):
     assert y_pred.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
     assert y_pred.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
     assert y_pred.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
-   
-    # Creamos la matriz y de salida real, con el mismo shape que las predicciones
-    
     y_nwp = np.empty_like(y_pred)
     for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
         # hay que quitarles la componente 0 y pasarlos a numpy
@@ -126,17 +99,23 @@ def pmodel(file, temp, hr, rain):
         with open(Path(cfg.paths.pmodel.dataset_metadata), 'r') as handler:
             metadata = yaml.safe_load(handler)
     except Exception as e:
-        print(f"Algun archivo no puede ser leido. {e}")
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pmodel.dataset} \
+            con el dataset para el modelo de parcela o {cfg.paths.pmodel.dataset_metadata} de metadatos del dataset del \
+            modelo de parcela. Mas info en: {e}")
+        exit()
+    
+    
     device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
     Fout = len(cfg.prediccion)
     
-    ## Generar Dataset de test
+    ## Generar Dataset de test para acelerar el proceso de entrenamiento
+    print("Generando datos temporales para acelerar el proceso de predicion")
     try:
         test_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_test), "rb"))
-        print(f"Cargango datos de test desde el modelo pmodel desde {cfg.paths.pmodel.pmodel_test}")
+        print(f"\tYa existen los datos temporales... Cargango datos de test desde el modelo pmodel desde {cfg.paths.pmodel.pmodel_test}")
     except (OSError, IOError) as e:
-        print(f"Generando datos de test...")
-        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+        print(f"\tGenerando datos de test...")
+        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         x_nwp = np.empty_like(y_real)
@@ -150,7 +129,7 @@ def pmodel(file, temp, hr, rain):
     
     cfg_previo = copy.deepcopy(dict(cfg))
     if not temp and not hr and not rain:
-        print("No se ha definido que predecir. Ver pmodel --help")
+        print(f"No se ha definido que predecir. Ver pmodel --help {FAIL}")
         exit()
     if temp:
         ## Parte especifica temperatura
@@ -161,15 +140,8 @@ def pmodel(file, temp, hr, rain):
                                         batch_size=None,
                                         num_workers=2)
        
-        print(f"\tDataset de test: {len(test_dataloader)}")
-
-        kwargs_prediccion= {
-            'name': name,
-            'device': device,
-            'path_checkpoints': cfg.paths.pmodel.checkpoints,
-            'use_checkpoint': cfg.pmodel.dataloaders.test.use_checkpoint,
-            'path_model' : cfg.paths.pmodel.model,
-            } 
+        print(f"\tDataset de test: {len(test_dataloader)}", end='')
+        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -178,13 +150,13 @@ def pmodel(file, temp, hr, rain):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
-    
+        print(OK)    
         output = Path(cfg.paths.pmodel.predictions)
         output.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Usando {output} como ruta para guardar predicciones")
+        print(f"\tUsando {output} como ruta para guardar predicciones", end='')
         with open(output, 'wb') as handler:
             pickle.dump(predicciones, handler)
-        print(f"Salvando archivo de predicciones en {output}")
+        print(OK)
 
     if hr:
         ## Parte especifica temperatura
@@ -195,14 +167,8 @@ def pmodel(file, temp, hr, rain):
                                         batch_size=None,
                                         num_workers=2)
        
-        print(f"\tDataset de test: {len(test_dataloader)}")
-        kwargs_prediccion= {
-            'name': name,
-            'device': device,
-            'path_checkpoints': cfg.paths.pmodel.checkpoints,
-            'use_checkpoint': cfg.pmodel.dataloaders.test.use_checkpoint,
-            'path_model' : cfg.paths.pmodel.model,
-            } 
+        print(f"\tDataset de test: {len(test_dataloader)}", end='')
+        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -211,20 +177,14 @@ def pmodel(file, temp, hr, rain):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
-    
+        print(OK)
         output = Path(cfg.paths.pmodel.predictions)
         output.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Usando {output} como ruta para guardar predicciones")
+        print(f"\tUsando {output} como ruta para guardar predicciones", end='')
         with open(output, 'wb') as handler:
             pickle.dump(predicciones, handler)
-        print(f"Salvando archivo de predicciones en {output}")
-    
-        output = Path(cfg.paths.pmodel.predictions)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Usando {output} como ruta para guardar predicciones")
-        with open(output, 'wb') as handler:
-            pickle.dump(predicciones, handler)
-        print(f"Salvando archivo de predicciones en {output}")
+        print(OK)
+        
     if rain:
         ## Parte especifica temperatura
         print("Prediccion modelo de precipitacion...")
@@ -234,15 +194,8 @@ def pmodel(file, temp, hr, rain):
                                         batch_size=None,
                                         num_workers=2)
        
-        print(f"\tDataset de test: {len(test_dataloader)}")    
-    
-        kwargs_prediccion= {
-            'name': name,
-            'device': device,
-            'path_checkpoints': cfg.paths.pmodel.checkpoints,
-            'use_checkpoint': cfg.pmodel.dataloaders.test.use_checkpoint,
-            'path_model' : cfg.paths.pmodel.model,
-            }  
+        print(f"\tDataset de test: {len(test_dataloader)}", end='')    
+        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -251,13 +204,13 @@ def pmodel(file, temp, hr, rain):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
-    
+        print(OK)
         output = Path(cfg.paths.pmodel.predictions)
         output.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Usando {output} como ruta para guardar predicciones")
+        print(f"\tUsando {output} como ruta para guardar predicciones", end='')
         with open(output, 'wb') as handler:
             pickle.dump(predicciones, handler)
-        print(f"Salvando archivo de predicciones en {output}")
+        print(OK)
 
 if __name__ == "__main__":
     main()

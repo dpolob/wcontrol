@@ -41,22 +41,22 @@ def main():
 @main.command()                                           
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def zmodel(file):
-    """Codigo para generar resultados para el modelo zonal"""
+
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
+        name = cfg["experiment"]
+        epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
+        cfg = AttrDict(parser(name, epoch)(cfg))
         print(f"Usando {file} como archivo de configuracion")
-    except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
+        with open(Path(cfg.paths.zmodel.predictions), 'rb') as handler:
+            predicciones = pickle.load(handler)
+        print(f"Usando {cfg.paths.zmodel.predictions} como archivo de predicciones")
+    except Exception as e:
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {ccfg.paths.zmodel.predictions} \
+            Mas info en: {e}")
+        exit()
     
-    name = cfg["experiment"]
-    epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
-    cfg = AttrDict(parser(name, epoch)(cfg))
-
-    print(f"Usando {cfg.paths.zmodel.predictions} como archivo de predicciones")
-    with open(Path(cfg.paths.zmodel.predictions), 'rb') as handler:
-        predicciones = pickle.load(handler)
-        print("Cargado archivo de predicciones")
     y_pred, y_real, y_nwp = predicciones['y_pred'], predicciones['y_real'], predicciones['y_nwp']
     muestras = generar_muestras(**cfg.pmodel.resultados, y_pred=y_pred)
     plots_path = Path(cfg.paths.zmodel.viz) 

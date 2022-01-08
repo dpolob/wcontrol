@@ -44,30 +44,27 @@ def main():
 @main.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def zmodel(file):
-    
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
+            name = cfg["experiment"]
+            cfg = AttrDict(parser(name, None)(cfg))
         print(f"Usando {file} como archivo de configuracion")
-    except:
-        print(f"{file} no existe. Por favor defina un archivo con --file")
+        with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+            metadata = yaml.safe_load(handler)
+        print("Leidos metadatos del dataset")
+        with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
+            datasets = pickle.load(handler)
+        print(f"Usando {name} como nombre del experimento")
+    except Exception as e:
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.zmodel.dataset} \
+            con el dataset para el modelo zonal o {cfg.paths.zmodel.dataset_metadata} de metadatos del dataset del \
+            modelo zonal. Mas info en: {e}")
         exit()
-    
-       
-    name = cfg["experiment"]
-    cfg = AttrDict(parser(name, None)(cfg))
-    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
-        metadata = yaml.safe_load(handler)
-    print("Leidos metadatos del dataset")
-    
-    with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
-        datasets = pickle.load(handler)
-    print(f"Usando {name} como nombre del experimento")
     
     runs_path = Path(cfg.paths.zmodel.runs)
     runs_path.mkdir(parents=True, exist_ok=True)
     print(f"Usando {runs_path} como ruta para runs")
-    
     chkpts_path = Path(cfg.paths.zmodel.checkpoints)
     chkpts_path.mkdir(parents=True, exist_ok=True)
     print(f"Usando {chkpts_path} como ruta para guardar checkpoints")
@@ -97,8 +94,7 @@ def zmodel(file):
     else:
         FECHA_INICIO_VALID = None
         FECHA_FIN_VALID = None
-        
-
+    
     print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
     
     fecha_inicio = datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S")
@@ -117,11 +113,7 @@ def zmodel(file):
         print(f"Generando dataset de validation desde {x} a {y}")
         dfs_valid = [df.loc[(df.index >= x ) & (df.index <= y), :] for df in datasets]
    
-    if 'shuffle' not in cfg.zmodel.dataloaders.train.keys():
-        shuffle = True
-    else:
-        shuffle = cfg.zmodel.dataloaders.train.shuffle
-        
+    shuffle = True if 'shuffle' not in cfg.zmodel.dataloaders.train.keys() else cfg.zmodel.dataloaders.train.shuffle
     if TRAIN:
         train_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_train,
                                                                 pasado=PASADO,
@@ -137,10 +129,7 @@ def zmodel(file):
     
                                       batch_size=None,
                                       num_workers=8)
-    if 'shuffle' not in cfg.zmodel.dataloaders.validation.keys():
-        shuffle = True
-    else:
-        shuffle = cfg.zmodel.dataloaders.validation.shuffle
+    shuffle = True if 'shuffle' not in cfg.zmodel.dataloaders.validation.keys() else cfg.zmodel.dataloaders.validation.shuffle
     if VALIDATION:
         valid_dataloader = DataLoader(dataset=ds.Seq2SeqDataset(datasets=dfs_valid,
                                                                 pasado=PASADO,
@@ -157,16 +146,10 @@ def zmodel(file):
                                       batch_size=None,
                                       num_workers=8)
    
-
     print(f"Dataset de train: {len(dfs_train)} componentes con longitud máxima de {len(train_dataloader)}")
     print(f"Dataset de validacion: {len(dfs_valid)} componentes con longitud máxima de {len(valid_dataloader)}")
-    print("\n")
-
-    torch.manual_seed(420)
-    np.random.seed(420)
-
+   
     module = importlib.import_module(f"models.seq2seq.{cfg.zmodel.model.name}")
-    
     encoder = module.RNNEncoder(rnn_num_layers=cfg.zmodel.model.encoder.rnn_num_layers,
                                 input_feature_len=len(Ff),
                                 sequence_len=PASADO + 1, # +1 porque tomamos tiempo0
@@ -189,10 +172,8 @@ def zmodel(file):
                                     device=device)
     model = model.to(device)
 
-
     # Funciones loss
     loss_fn = lf.LossFunction(**kwargs_loss)
-    
     encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
     decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
     if cfg.zmodel.model.scheduler:
@@ -214,35 +195,15 @@ def zmodel(file):
                               scheduler_batch_step=True if cfg.zmodel.model.scheduler else False,
                               checkpoint_folder= chkpts_path,
                               runs_folder= runs_path,
-                              #additional_metric_fns={"L1_mean_loss": lf.LossFunction(loss='L1', reduction='mean')}
                               save_model=cfg.zmodel.model.save_model,
                               save_model_path=cfg.paths.zmodel.model,
                               early_stop=cfg.zmodel.model.early_stop,
                               alpha = cfg.zmodel.model.decoder.alpha
                               )
-
-    #trainer.lr_find(train_dataloader, model_optimizer, start_lr=1e-5, end_lr=1e-2, num_iter=500)
-
     if TRAIN and VALIDATION:
         trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=cfg.zmodel.model.plot_intermediate_results)
     else:
         trainer.train(EPOCHS, train_dataloader  , resume_only_model=True, resume=True, plot=cfg.zmodel.model.plot_intermediate_results)
-    # for it, (Xt, X, Yt, Y) in enumerate(train_dataloader):
-    #     encoder_optimizer.zero_grad()
-    #     decoder_optimizer.zero_grad()
-    #     print(it, Xt.shape, X.shape, Yt.shape, Y.shape)
-    #     ypred = model(Xt, X, Yt, Y)
-    #     loss = MSE_mean(ypred,Y)
-    #     loss.backward() # Does backpropagation and calculates gradients
-    #     encoder_optimizer.step() # Updates the weights accordingly
-    #     decoder_optimizer.step()
-    #     if it==85:
-    #         print(it, ": ", loss.item() )
-    #         print("Xt:", np.any(np.isnan(Xt.numpy())))
-    #         print("X:", np.any(np.isnan(X.numpy())))
-    #         print("Yt:", np.any(np.isnan(Yt.numpy())))
-    #         print("Y:", np.any(np.isnan(Y.numpy())))
-    #         print("ypred:", ypred)
 
     with open(chkpts_path / "valid_losses.pickle", 'rb') as handler:
         valid_losses = pickle.load(handler)
@@ -269,8 +230,10 @@ def pmodel(file, temp, hr, rain):
         with open(Path(cfg.paths.pmodel.dataset), 'rb') as handler:
             datasets = pickle.load(handler)
             print(f"Usando {cfg.paths.pmodel.dataset} como archivo de datos procesados de estaciones")
-    except:
-        print(f"{file} no existe o no existe el archivo de metadatos o no existe el archivo de datos de estaciones")
+    except Exception as e:
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pmodel.dataset} \
+            con el dataset para el modelo zonal o {cfg.paths.pmodel.dataset_metadata} de metadatos del dataset del \
+            modelo zonal. Mas info en: {e}")
         exit()
     device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
     Fout = len(cfg.prediccion)
@@ -282,7 +245,7 @@ def pmodel(file, temp, hr, rain):
     except:
         print(f"Generando datos de train...")
         Path(cfg.paths.pmodel.pmodel_train).parent.mkdir(parents=True, exist_ok=True)
-        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
@@ -301,7 +264,7 @@ def pmodel(file, temp, hr, rain):
     except:
         print(f"Generando datos de validacion...")
         Path(cfg.paths.pmodel.pmodel_valid).parent.mkdir(parents=True, exist_ok=True)
-        kwargs_dataloader = generar_kwargs()._dataloader(model='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
@@ -331,19 +294,13 @@ def pmodel(file, temp, hr, rain):
         print(f"Usando {cfg.paths.pmodel.runs} como ruta para runs")
         print(f"Usando {cfg.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
         
-        try:
-            shuffle = cfg.pmodel.dataloaders.train.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.train.keys() else cfg.pmodel.dataloaders.train.shuffle
         if TRAIN:
             train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=slice(0, 1)),
                                         sampler=sa_pmodel.PModelSampler(datasets=train_dataset, batch_size=1, shuffle=shuffle),    
                                         batch_size=None,
                                         num_workers=2)
-        try:
-            shuffle = cfg.pmodel.dataloaders.validation.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.validation.keys() else cfg.pmodel.dataloaders.validation.shuffle
         if VALIDATION:
             valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=slice(0, 1)),    
                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),
@@ -388,19 +345,13 @@ def pmodel(file, temp, hr, rain):
         print(f"Usando {cfg.paths.pmodel.runs} como ruta para runs")
         print(f"Usando {cfg.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
          
-        try:
-            shuffle = cfg.pmodel.dataloaders.train.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.train.keys() else cfg.pmodel.dataloaders.train.shuffle
         if TRAIN:
             train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=slice(1, 2)),
                                         sampler=sa_pmodel.PModelSampler(datasets=train_dataset, batch_size=1, shuffle=shuffle),    
                                         batch_size=None,
                                         num_workers=2)
-        try:
-            shuffle = cfg.pmodel.dataloaders.validation.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.validation.keys() else cfg.pmodel.dataloaders.validation.shuffle
         if VALIDATION:
             valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=slice(1, 2)),    
                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),
@@ -444,19 +395,13 @@ def pmodel(file, temp, hr, rain):
         print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
         print(f"Usando {cfg.paths.pmodel.runs} como ruta para runs")
         print(f"Usando {cfg.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
-        try:
-            shuffle = cfg.pmodel.dataloaders.train.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.train.keys() else cfg.pmodel.dataloaders.train.shuffle
         if TRAIN:
             train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=slice(2, 2 + len(metadata["bins"]))),
                                         sampler=sa_pmodel.PModelSampler(datasets=train_dataset, batch_size=1, shuffle=shuffle),    
                                         batch_size=None,
                                         num_workers=2)
-        try:
-            shuffle = cfg.pmodel.dataloaders.validation.shuffle
-        except:
-            shuffle = True
+        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.validation.keys() else cfg.pmodel.dataloaders.validation.shuffle
         if VALIDATION:
             valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=slice(2, 2 + len(metadata["bins"]))),    
                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),

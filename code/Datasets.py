@@ -14,10 +14,10 @@ FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
 
 
 @click.group()
-def cli():
+def main():
     pass
 
-@cli.command()
+@main.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def zmodel(file):
     try:
@@ -31,8 +31,8 @@ def zmodel(file):
     name = cfg["experiment"]
     cfg = AttrDict(parser(name, None)(cfg))
     dfs, metadata = generar_variables(estaciones=list(cfg.zmodel.estaciones), 
-                                           outliers = cfg.preprocesado.outliers,
-                                           proveedor= cfg.zmodel.proveedor[0])
+                                      outliers = cfg.preprocesado.outliers,
+                                      proveedor= cfg.zmodel.proveedor[0])
     output = Path(cfg.paths.zmodel.dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
     print(f"Guardando salida en {cfg.paths.zmodel.dataset}", end='')
@@ -44,39 +44,36 @@ def zmodel(file):
         yaml.safe_dump(metadata, handler, allow_unicode=True)
     print(OK)
     
-@cli.command()
+@main.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def pmodel(file):
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
         print(f"Usando {file} como archivo de configuracion")
+        with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+            dataset_metadata = yaml.safe_load(handler)
     except:
-        print(f"{file} no existe. Por favor defina un archivo con --file {FAIL}")
+        print(f"El archivo de configuracion del experimento o el de metadatos del modelo zonal no existe. {FAIL}")
         exit()
+    
     name = cfg["experiment"]
     cfg = AttrDict(parser(name, None)(cfg))
     output = Path(cfg.paths.pmodel.dataset)
     output.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
-        dataset_metadata = yaml.safe_load(handler)
-
     dfs, metadata = generar_variables(estaciones=list(cfg.pmodel.estaciones), 
-                                           outliers = cfg.preprocesado.outliers,
-                                           proveedor= cfg.zmodel.proveedor[0],
-                                           CdG=list(dataset_metadata["CdG"]))
+                                      outliers = cfg.preprocesado.outliers,
+                                      proveedor= cfg.zmodel.proveedor[0],
+                                      CdG=list(dataset_metadata["CdG"]))
     print(f"Guardando salida en {cfg.paths.pmodel.dataset}", end='')
     
     with open(output, 'wb') as handler:
         pickle.dump(dfs, handler)
     print(OK)
-    
     print(f"Guardando metadatos en {cfg.paths.pmodel.dataset_metadata}", end='')                    
     with open(Path(cfg.paths.pmodel.dataset_metadata), 'w') as handler:
         yaml.safe_dump(metadata, handler, allow_unicode=True)
     print(OK)
 
-    
 if __name__ == "__main__":
-    cli()
+    main()

@@ -3,14 +3,14 @@ from datetime import datetime
 
 class generar_kwargs():
     
-    def _dataloader(self, model: str=None, fase: str=None, cfg: AttrDict=None, **kwargs) -> dict:
+    def _dataloader(self, modelo: str, fase: str, cfg: AttrDict, **kwargs) -> dict:
         """Genera los argumentos para las diferentes funciones, evitando repetir codigo
 
         Args:
-            model (str, optional): 'zmodel' o 'pmodel'
-            dataloader (bool, optional): Si true genera argumentos para un dataloader
-            fase (str, optional): 'validation' para dataset de validacion, 'train' para dataset de train. Defaults to None.
-            cfg (AttrDict, optional): archivo de configuracion
+            modelo (str): 'zmodel' o 'pmodel'
+            fase (str): 'validation' para dataset de validacion, 'train' para dataset de train. 'test' para dataset
+                de test
+            cfg (AttrDict): archivo de configuracion
             **kwargs (dict): parametros opcionales necesarios
 
         Returns:
@@ -19,21 +19,21 @@ class generar_kwargs():
         metadata = kwargs.get('metadata', None)
         datasets = kwargs.get('datasets', None)
         
-        if model not in ['zmodel', 'pmodel'] or fase not in ['validation', 'train', 'test'] or cfg is None or metadata is None or datasets is None:
-            print("la funcion generar_kwargs no tiene los parametros correctos")
+        if modelo not in ['zmodel', 'pmodel'] or fase not in ['validation', 'train', 'test'] or cfg is None or metadata is None or datasets is None:
+            print("La funcion generar_kwargs._predict() no tiene los parametros correctos")
             exit()
         
-        if model == 'pmodel' and fase == 'train':
+        if modelo == 'pmodel' and fase == 'train':
             handler = cfg.pmodel.dataloaders.train
-        elif model == 'pmodel' and fase == 'validation':
+        elif modelo == 'pmodel' and fase == 'validation':
             handler = cfg.pmodel.dataloaders.validation
-        elif model == 'pmodel' and fase == 'test':
+        elif modelo == 'pmodel' and fase == 'test':
             handler = cfg.pmodel.dataloaders.test
-        elif model == 'zmodel' and fase == 'train':
+        elif modelo == 'zmodel' and fase == 'train':
             handler = cfg.zmodel.dataloaders.train
-        elif model == 'zmodel' and fase == 'validation':
+        elif modelo == 'zmodel' and fase == 'validation':
             handler = cfg.zmodel.dataloaders.validation
-        elif model == 'zmodel' and fase == 'test':
+        elif modelo == 'zmodel' and fase == 'test':
             handler = cfg.zmodel.dataloaders.test
         else:
             raise NotImplementedError
@@ -49,3 +49,29 @@ class generar_kwargs():
                 }  
         
         return data
+    
+    def _predict(self, modelo: str, cfg: AttrDict) -> dict:
+        """Genera los argumentos para las diferentes funciones de prediccion, evitando repetir codigo
+
+        Args:
+            modelo (str, optional): 'zmodel' o 'pmodel'
+            cfg (AttrDict, optional): archivo de configuracion
+        
+        Returns:
+            dict: diccionario kwargs 
+        """
+        if modelo == 'zmodel':
+            data = {'device': 'cuda' if cfg.zmodel.model.use_cuda else 'cpu',
+                    'path_checkpoints': cfg.paths.zmodel.checkpoints,
+                    'use_checkpoint': cfg.zmodel.dataloaders.test.use_checkpoint,
+                    'path_model' : cfg.paths.zmodel.model
+                    }
+        elif modelo == 'pmodel':
+            data = {'device': 'cuda' if cfg.pmodel.model.use_cuda else 'cpu',
+                    'path_checkpoints': cfg.paths.pmodel.checkpoints,
+                    'use_checkpoint': cfg.pmodel.dataloaders.test.use_checkpoint,
+                    'path_model' : cfg.paths.pmodel.model
+                    }
+        else:
+            raise NotImplementedError
+        return data 

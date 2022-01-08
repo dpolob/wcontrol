@@ -10,6 +10,8 @@ from typing import Tuple, Any, List, Union
 plt.switch_backend('agg')
 
 class BaseTrainer(ABC):
+    """Define un Trainer con funciones básicas. Definido como clase abstracta"""
+    
     def __init__(self, model, loss_fn=None, device='cpu', **kwargs):
         self.model = model
         self.loss_fn = loss_fn
@@ -58,7 +60,6 @@ class BaseTrainer(ABC):
         Se devuelve ordenado por numero de epoch"""
         
         checkpoints = []
-        #checkpoint_path = self.checkpoint_path if name is not None else pathlib.Path(f'./experiments/modelchkpts/{name}_chkpts')
         for cp in self.checkpoint_path.glob('checkpoint_*'):
             checkpoint_name = str(cp).split('/')[-1]
             checkpoint_epoch = int(checkpoint_name.split('_')[-1])
@@ -139,7 +140,7 @@ class BaseTrainer(ABC):
         
         if self.checkpoint_path/'valid_losses.pickle'.is_file():
             best_epoch = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
-            checkpoints = self._get_checkpoints()  # devulve lista ordenada de tuple (path, checkpoint_epoch)
+            checkpoints = self._get_checkpoints()  # devuelve lista ordenada de tuple (path, checkpoint_epoch)
             for delete_cp in checkpoints:
                 if delete_cp[1] != best_epoch:
                     delete_cp[0].unlink()
