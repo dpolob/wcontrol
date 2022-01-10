@@ -175,18 +175,9 @@ def zmodel(file):
 
     # Funciones loss
     loss_fn = lf.LossFunction(**kwargs_loss)
-    encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
-    decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
-    # if cfg.zmodel.model.scheduler:
-    #     encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=cfg.zmodel.model.encoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
-    #     decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
-    #     scheduler = [encoder_scheduler, decoder_scheduler]
-    # else:
-    #     scheduler = None
-    model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
-    scheduler = optim.lr_scheduler.OneCycleLR(model_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=6)
-
-    
+    encoder_optimizer = getattr(optim, cfg.zmodel.model.encoder.optimizer_name)(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
+    decoder_optimizer = getattr(optim, cfg.zmodel.model.decoder.optimizer_name)(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
+       
     trainer = tr.TorchTrainer(name=name,
                               model=model,
                               optimizer=[encoder_optimizer, decoder_optimizer], 
