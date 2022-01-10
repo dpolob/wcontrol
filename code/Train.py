@@ -34,8 +34,6 @@ SI = Fore.GREEN + "SI" + Style.RESET_ALL
 NO = Fore.RED + "NO" + Style.RESET_ALL
 
 
-    
-
 @click.group()
 def main():
     pass
@@ -162,7 +160,10 @@ def zmodel(file):
     decoder = module.DecoderCell(input_feature_len=len(Ft) + len(Fnwp),
                                  hidden_size=cfg.zmodel.model.decoder.hidden_size,
                                  output_size=len(Fout),
-                                 dropout=cfg.zmodel.model.decoder.dropout)
+                                 dropout=cfg.zmodel.model.decoder.dropout,
+                                 regres_hidden_layers=dict(cfg.zmodel.model.decoder.temphr_n_layers),
+                                 class_hidden_layers=dict(cfg.zmodel.model.decoder.class_n_layers),
+                                 bins_len=len(metadata['bins']))
     decoder = decoder.to(device)
 
     model = module.EncoderDecoderWrapper(encoder=encoder,
@@ -176,12 +177,12 @@ def zmodel(file):
     loss_fn = lf.LossFunction(**kwargs_loss)
     encoder_optimizer = torch.optim.AdamW(encoder.parameters(), lr=cfg.zmodel.model.encoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
     decoder_optimizer = torch.optim.AdamW(decoder.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
-    if cfg.zmodel.model.scheduler:
-        encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=cfg.zmodel.model.encoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
-        decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
-        scheduler = [encoder_scheduler, decoder_scheduler]
-    else:
-        scheduler = None
+    # if cfg.zmodel.model.scheduler:
+    #     encoder_scheduler = optim.lr_scheduler.OneCycleLR(encoder_optimizer, max_lr=cfg.zmodel.model.encoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
+    #     decoder_scheduler = optim.lr_scheduler.OneCycleLR(decoder_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=EPOCHS)
+    #     scheduler = [encoder_scheduler, decoder_scheduler]
+    # else:
+    #     scheduler = None
     model_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.zmodel.model.decoder.lr, weight_decay=cfg.zmodel.model.decoder.lr / 10)
     scheduler = optim.lr_scheduler.OneCycleLR(model_optimizer, max_lr=cfg.zmodel.model.decoder.lr, steps_per_epoch=len(train_dataloader), epochs=6)
 
@@ -192,13 +193,14 @@ def zmodel(file):
                               loss_fn = loss_fn,   
                               scheduler=None,
                               device=device,
-                              scheduler_batch_step=True if cfg.zmodel.model.scheduler else False,
+                              # scheduler_batch_step=True if cfg.zmodel.model.scheduler else False,
                               checkpoint_folder= chkpts_path,
                               runs_folder= runs_path,
                               save_model=cfg.zmodel.model.save_model,
                               save_model_path=cfg.paths.zmodel.model,
                               early_stop=cfg.zmodel.model.early_stop,
-                              alpha = cfg.zmodel.model.decoder.alpha
+                              alpha = cfg.zmodel.model.decoder.alpha,
+                              keep_best_checkpoint=False
                               )
     if TRAIN and VALIDATION:
         trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=cfg.zmodel.model.plot_intermediate_results)

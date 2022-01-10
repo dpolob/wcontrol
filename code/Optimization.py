@@ -324,7 +324,7 @@ def pmodel(file, temp, hr, rain):
         storage_name = "sqlite:///{}.db".format(study_name)
         #storage_name = "mysql://root:root@127.0.0.1:3306/prueba"
         study = optuna.create_study(study_name=study_name, storage=storage_name, direction="minimize", load_if_exists=True)
-        study.optimize(objectivepmodel, n_trials=100)
+        study.optimize(objectivepmodel, n_trials=50)  # son trail por proceso, no trails totales
 
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

@@ -25,7 +25,7 @@ class BaseTrainer(ABC):
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 50)
         self.writer = None  # se inicializa en el train, para predict no hay 
-        self.keep_best_checkpoint = kwargs.get('keep_best_checkpoint', True)
+        self.keep_best_checkpoint = kwargs.get('keep_best_checkpoint', False)
         self.save_model = kwargs.get('save_model', False)
         self.save_model_path = kwargs.get('save_model_path', None)
         self.early_stop = kwargs.get('early_stop', None)
