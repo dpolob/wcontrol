@@ -50,6 +50,8 @@ def pmodel(file):
     try:
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
+            name = cfg["experiment"]
+            cfg = AttrDict(parser(name, None)(cfg))
         print(f"Usando {file} como archivo de configuracion")
         with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
             dataset_metadata = yaml.safe_load(handler)
