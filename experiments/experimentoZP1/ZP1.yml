@@ -243,7 +243,6 @@ pmodel:
       altitud: 782
   model:
     use_cuda: True
-    
     temperatura:
       name: "RedGeneral"
       save_model: True
@@ -255,6 +254,11 @@ pmodel:
         reduction: mean
         coefs: None
       lr: 0.005
+      gru_n_layers: 1
+      hidden_size: 50
+      hidden_layers:
+        0: 50
+      optimizer_name: "AdamW"
     hr:
       name: "RedGeneral"
       save_model: True
@@ -266,6 +270,11 @@ pmodel:
         reduction: mean
         coefs: None
       lr: 0.005
+      gru_n_layers: 1
+      hidden_size: 50
+      hidden_layers:
+        0: 50
+      optimizer_name: "AdamW"
     precipitacion:
       name: "RedGeneral"
       save_model: True
@@ -277,6 +286,11 @@ pmodel:
         reduction: mean
         coefs: None
       lr: 0.005
+      gru_n_layers: 1
+      hidden_size: 50
+      hidden_layers:
+        0: 50
+      optimizer_name: "AdamW"
   dataloaders:
     train:
       enable: True
