@@ -220,8 +220,7 @@ def objectivepmodel(trial):
         exit()
     
     def entrenador_optimo(Fin: int, Fout: int, componente: slice, kwargs_loss: dict, cfg=cfg):
-        ## Parte especifica temperatura
-        cfg = AttrDict(parser(None, None, 'temperatura')(dict(cfg)))
+
         EPOCHS = 25
         TRAIN = cfg.zmodel.dataloaders.train.enable
         VALIDATION = cfg.zmodel.dataloaders.validation.enable
