@@ -274,7 +274,7 @@ def objectivepmodel(trial):
     if mhr:
         return entrenador_optimo(Fin=1, Fout=1,componente=slice(1, 2), kwargs_loss=cfg.pmodel.model.hr.loss_function)
     if mrain:
-        return entrenador_optimo(Fin=len(metadata["bins"]), Fout=len(metadata["bins"]), componente=slice(2, 2 + len(metadata["bins"]), kwargs_loss=cfg.pmodel.model.precipitacion.loss_function))
+        return entrenador_optimo(Fin=len(metadata["bins"]), Fout=len(metadata["bins"]), componente=slice(2, 2 + len(metadata["bins"])), kwargs_loss=cfg.pmodel.model.precipitacion.loss_function)
     
     
     
