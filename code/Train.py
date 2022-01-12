@@ -276,7 +276,7 @@ def pmodel(file, temp, hr, rain):
         exit()
         
         
-    def pmodel_modelo(componentes, kwargs_model, lr, optimizer_name, save_model, early_stop, plot) -> None:
+    def pmodel_modelo(componentes: slice, kwargs_model: dict, lr: float, optimizer_name: str, save_model: bool, early_stop: int, plot: bool) -> None:
         
         TRAIN = cfg.zmodel.dataloaders.train.enable
         VALIDATION = cfg.zmodel.dataloaders.validation.enable
@@ -292,7 +292,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
         shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.validation.keys() else cfg.pmodel.dataloaders.validation.shuffle
         if VALIDATION:
-            valid_dataloader = DataLoader(datasset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=componentes),    
+            valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=componentes),    
                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),
                                         batch_size=None,
                                         num_workers=2)
@@ -332,12 +332,14 @@ def pmodel(file, temp, hr, rain):
         pmodel_modelo(componentes=slice(0, 1),
                       kwargs_model={"Fin": 1, 
                                     "Fout": 1,
-                                    "gru_n_layers": cfg.pmodel.model.temperatura.gru_n_layers,
+                                    "gru_num_layers": cfg.pmodel.model.temperatura.gru_n_layers,
                                     "hidden_size": cfg.pmodel.model.temperatura.hidden_size,
                                     "hidden_layers": cfg.pmodel.model.temperatura.hidden_layers},
                       lr=cfg.pmodel.model.temperatura.lr,
+                      optimizer_name=cfg.pmodel.model.temperatura.optimizer_name,
                       save_model=cfg.pmodel.model.temperatura.save_model,
-                      early_stop=cfg.pmodel.model.temperatura.early_stop
+                      early_stop=cfg.pmodel.model.temperatura.early_stop,
+                      plot=cfg.pmodel.model.temperatura.plot_intermediate_results
                       )
     if hr:
         print("Entrando modelo de hr...")
@@ -347,12 +349,14 @@ def pmodel(file, temp, hr, rain):
         pmodel_modelo(componentes=slice(1, 2),
                       kwargs_model={"Fin": 1, 
                                     "Fout": 1,
-                                    "gru_n_layers": cfg.pmodel.model.hr.gru_n_layers,
+                                    "gru_num_layers": cfg.pmodel.model.hr.gru_n_layers,
                                     "hidden_size": cfg.pmodel.model.hr.hidden_size,
                                     "hidden_layers": cfg.pmodel.model.hr.hidden_layers},
                       lr=cfg.pmodel.model.hr.lr,
+                      optimizer_name=cfg.pmodel.model.hr.optimizer_name,
                       save_model=cfg.pmodel.model.hr.save_model,
-                      early_stop=cfg.pmodel.model.hr.early_stop
+                      early_stop=cfg.pmodel.model.hr.early_stop,
+                      plot=cfg.pmodel.model.hr.plot_intermediate_results
                       )
     if rain:
         print("Entrando modelo de precipitacion...")
@@ -362,12 +366,14 @@ def pmodel(file, temp, hr, rain):
         pmodel_modelo(componentes=slice(2, 2 + len(metadata['bins'])),
                       kwargs_model={"Fin": len(metadata['bins']), 
                                     "Fout": len(metadata['bins']),
-                                    "gru_n_layers": cfg.pmodel.model.precipitacion.gru_n_layers,
+                                    "gru_num_layers": cfg.pmodel.model.precipitacion.gru_n_layers,
                                     "hidden_size": cfg.pmodel.model.precipitacion.hidden_size,
                                     "hidden_layers": cfg.pmodel.model.precipitacion.hidden_layers},
                       lr=cfg.pmodel.model.precipitacion.lr,
+                      optimizer_name=cfg.pmodel.model.precipitacion.optimizer_name,
                       save_model=cfg.pmodel.model.precipitacion.save_model,
-                      early_stop=cfg.pmodel.model.precipitacion.early_stop
+                      early_stop=cfg.pmodel.model.precipitacion.early_stop,
+                      plot=cfg.pmodel.model.precipitacion.plot_intermediate_results
                       )
 
 if __name__ == "__main__":
