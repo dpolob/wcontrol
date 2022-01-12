@@ -38,7 +38,8 @@ class generar_kwargs():
         else:
             raise NotImplementedError
         
-        data = {'datasets': datasets, 'fecha_inicio_test': datetime.strptime(handler.fecha_inicio, "%Y-%m-%d %H:%M:%S"), 
+        data = {'datasets': datasets, 
+                'fecha_inicio_test': datetime.strptime(handler.fecha_inicio, "%Y-%m-%d %H:%M:%S"), 
                 'fecha_fin_test': datetime.strptime(handler.fecha_fin, "%Y-%m-%d %H:%M:%S"), 
                 'fecha_inicio': datetime.strptime(metadata['fecha_min'], "%Y-%m-%d %H:%M:%S"),
                 'pasado': cfg.pasado,

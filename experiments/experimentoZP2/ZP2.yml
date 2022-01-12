@@ -1,10 +1,6 @@
-experiment: "experimentoZP1"
+experiment: "experimentoZP2"
 descripcion: | 
-  72-72 con 2 heads
-  dataset_pasado: 395, decoder_class_n_units_l0: 104, decoder_dropout: 0.025113415282590958, decoder_hrtemp_n_units_l0: 89,
-  decoder_lr: 0.0017454542687277807, decoder_optimizer_name: Adamax, decoder_temphr_n_layers: 1, encoder_bidirectional: False,
-  encoder_dropout: 0.1370193730667696, encoder_lr: 0.0017109279296515145, encoder_optimizer_name: RMSprop, encoder_rnn_num_layers: 1,
-  hidden_size: 50.0, trainer_alpha: 0.010348968947082392
+  Lo mismo que ZP1 pero poniendo un dataset de train mayor desde (2018-01-01 00:00:00 - pasado)
 prediccion: 
   - temperatura
   - hr
@@ -204,7 +200,7 @@ zmodel:
   dataloaders:
     train:
       enable: True
-      fecha_inicio: "2020-01-01 00:00:00"
+      fecha_inicio: "2018-01-15 00:00:00"
       fecha_fin: "2021-01-31 23:00:00"
       shuffle: True
     validation:
