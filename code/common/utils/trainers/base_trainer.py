@@ -17,10 +17,12 @@ class BaseTrainer(ABC):
         self.loss_fn = loss_fn
         self.device = device
         self.checkpoint_path = kwargs.get('checkpoint_folder', None)
-        if self.checkpoint_path is not None: 
+        if self.checkpoint_path is not None:
+            self.checkpoint_path = pathlib.Path(self.checkpoint_path)
             self.checkpoint_path.mkdir(parents=True, exist_ok=True)
         self.runs_path = kwargs.get('runs_folder', None)
-        if self.runs_path is not None: 
+        if self.runs_path is not None:
+            self.runs_path = pathlib.Path(self.runs_path)
             self.runs_path.mkdir(parents=True, exist_ok=True)
         self.train_checkpoint_interval = kwargs.get('train_checkpoint_interval', 1)
         self.max_checkpoints = kwargs.get('max_checkpoints', 50)
