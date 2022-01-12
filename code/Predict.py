@@ -16,6 +16,9 @@ from common.utils.parser import parser
 from common.utils.kwargs_gen import generar_kwargs
 from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_pmodel as sa_pmodel
+from common.utils.datasets import dataset_pipeline as ds_pipeline
+from common.utils.datasets import sampler_pipeline as sa_pipeline
+
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -108,7 +111,7 @@ def pmodel(file, temp, hr, rain):
     device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
     Fout = len(cfg.prediccion)
     
-    ## Generar Dataset de test para acelerar el proceso de entrenamiento
+    ## Generar Dataset de test para acelerar el proceso de prediccion
     print("Generando datos temporales para acelerar el proceso de predicion")
     try:
         test_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_test), "rb"))
@@ -211,6 +214,93 @@ def pmodel(file, temp, hr, rain):
         with open(output, 'wb') as handler:
             pickle.dump(predicciones, handler)
         print(OK)
+
+@main.command()                                           
+@click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
+def pipeline(file):
+    
+    try:
+        with open(file, 'r') as handler:
+            cfg = yaml.safe_load(handler)
+            name = cfg["experiment"]
+            cfg = AttrDict(parser(name, None)(cfg))    
+        with open(Path(cfg.paths.pipeline.dataset), 'rb') as handler:
+            datasets = pickle.load(handler)
+        with open(Path(cfg.paths.pipeline.dataset_metadata), 'r') as handler:
+            metadata = yaml.safe_load(handler)
+    except Exception as e:
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pipeline.dataset} \
+            con el dataset para el modelo de parcela o {cfg.paths.pipeline.dataset_metadata} de metadatos del dataset del \
+            modelo de parcela. Mas info en: {e}")
+        exit()
+    
+    # Realizar un predict del zmodel con los datos de la estacion pmodel
+    print(f"Inicio del dataset de test en {metadata['fecha_min']}")
+    kwargs_dataloader = generar_kwargs()._dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+    kwargs_prediccion = generar_kwargs()._predict(modelo='zmodel', cfg=cfg)
+    test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+    y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    y_real = np.empty_like(y_pred_zmodel)
+    assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
+    assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
+    assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
+    for i, (_, _, _, Y, _) in enumerate(tqdm(test_dataloader)):
+        y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+       
+    y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+    y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+
+    
+    print(f"{y_pred_zmodel.shape=}")
+    print(f"{y_real.shape=}")
+    
+    # Realizar un predict del pmodel con los datos de la estacion pmodel
+    # para cada uno de los modelos definidos
+    
+    cfg_previo = copy.deepcopy(dict(cfg))
+    ## Parte especifica temperatura
+    print("Prediccion modelo de temperatura...")
+    cfg = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
+    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(0, 1)),
+                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
+                                        batch_size=None,
+                                        num_workers=2)
+    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    y_pred_temp = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    y_pred_temp = y_pred_temp.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
+    
+    ## Parte especifica hr
+    print("Prediccion modelo de hr...")
+    cfg = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
+    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(1, 2)),
+                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
+                                        batch_size=None,
+                                        num_workers=2)
+    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    y_pred_hr = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    y_pred_hr = y_pred_hr.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
+    
+     ## Parte especifica hr
+    print("Prediccion modelo de hr...")
+    cfg = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
+    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(2, 2 + len(metadata["bins"]))),
+                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
+                                        batch_size=None,
+                                        num_workers=2)
+    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    y_pred_rain = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    y_pred_rain = y_pred_rain.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)   
+    
+    
+    predicciones = {'y_real': y_real, 'y_pred_hr': y_pred_hr, 'y_pred_rain': y_pred_rain, 'y_pred_temp': y_pred_temp}    
+   
+    output = Path(cfg.paths.pipeline.predictions)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Usando {output} como ruta para guardar predicciones")
+    with open(output, 'wb') as handler:
+        pickle.dump(predicciones, handler)
+    print(f"Salvando archivo de predicciones en {output}")
+    
 
 if __name__ == "__main__":
     main()

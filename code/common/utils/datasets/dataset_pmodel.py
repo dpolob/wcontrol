@@ -17,7 +17,7 @@ class PModelDataset(Dataset):
 
         Args:
             datasets (list): [Predicciones Zmodel (len, Ly, Fout), Valores Reales (len, Ly, Fout)]
-            componentes (list): Componente a ofrecer dentro de Fout, normalmente 0=temperatura, 1=hr y [2-10]=clases de lluvia
+            componentes (slice): Componente a ofrecer dentro de Fout, normalmente 0=temperatura, 1=hr y [2-10]=clases de lluvia
 
         Returns:
             tuple: (len(idx), Ly, len(componentes), (len(idx), Ly, len(componentes))
@@ -37,6 +37,6 @@ class PModelDataset(Dataset):
         
         X = self.X[idx, :, self.componentes]
         Y = self.Y[idx, :, self.componentes]
-        return (torch.from_numpy(X).float(),  # (1, 72, )
-                torch.from_numpy(Y).float())  # (1, 72)
+        return (torch.from_numpy(X).float(),  # (72, Len(componentes))
+                torch.from_numpy(Y).float())  # (72, Len(componentes))
 
