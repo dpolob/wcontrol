@@ -253,12 +253,12 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.005
-      gru_n_layers: 1
-      hidden_size: 50
+      lr: 0.002893199770218999  # optuna
+      gru_n_layers: 1  # optuna
+      hidden_size: 100 # optuna
       hidden_layers:
-        0: 50
-      optimizer_name: "AdamW"
+        0: 118
+      optimizer_name: "Adam"
     hr:
       name: "RedGeneral"
       save_model: True
@@ -269,12 +269,12 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.005
-      gru_n_layers: 1
-      hidden_size: 50
+      lr: 0.001233310567246368  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 175  # optuna
       hidden_layers:
-        0: 50
-      optimizer_name: "AdamW"
+        0: 234
+      optimizer_name: "Adamax"
     precipitacion:
       name: "RedGeneral"
       save_model: True
