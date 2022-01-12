@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from attrdict import AttrDict
 from tqdm import tqdm
-from colorama import Fore
+from colorama import Fore, Style
 from pathlib import Path
 from torch.utils.data import DataLoader
 
