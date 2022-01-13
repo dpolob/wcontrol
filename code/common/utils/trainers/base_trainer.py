@@ -140,7 +140,7 @@ class BaseTrainer(ABC):
     def _keep_best_checkpoint(self) -> None:
         """Elimina todos los checkpoints excepto el mejor"""
         
-        if self.checkpoint_path/'valid_losses.pickle'.is_file():
+        if (self.checkpoint_path/'valid_losses.pickle').is_file():
             best_epoch = sorted(self.valid_losses.items(), key=lambda x:x[1])[0][0]
             checkpoints = self._get_checkpoints()  # devuelve lista ordenada de tuple (path, checkpoint_epoch)
             for delete_cp in checkpoints:
