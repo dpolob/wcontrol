@@ -73,9 +73,9 @@ class TorchTrainer(BaseTrainer):
         with torch.no_grad():
             for dato in tqdm(dataloader):
                 if isinstance(dato, tuple):  # el dataset es PmodelDataset
-                    X = X[0].to(self.device)
+                    X = dato[0].to(self.device)
                 else:  # el dataset es PipelineDataset
-                    X = X.to(self.device)
+                    X = dato.to(self.device)
                 y_pred = self.model(X)
                 predictions.append(y_pred.cpu().numpy())
         return predictions

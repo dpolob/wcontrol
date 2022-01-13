@@ -17,7 +17,7 @@ import common.predict.modules as predictor
 import copy
 
 from common.utils.parser import parser
-from common.utils.kwargs_gen import generar_kwargs
+import common.utils.kwargs_gen as generar_kwargs
 from common.utils.datasets import dataset_seq2seq as ds
 from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_seq2seq as sa
@@ -53,7 +53,7 @@ def zmodel(file):
         print("Leidos metadatos del dataset")
         with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
             datasets = pickle.load(handler)
-        print(f"Usando {name} como nombre del experimento")
+        print(f"Leidos metadatos del dataset")
     except Exception as e:
         print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.zmodel.dataset} \
             con el dataset para el modelo zonal o {cfg.paths.zmodel.dataset_metadata} de metadatos del dataset del \
@@ -270,111 +270,90 @@ def pmodel(file, temp, hr, rain):
         with open(Path(cfg.paths.pmodel.pmodel_valid), 'wb') as handler:
             pickle.dump(valid_dataset, handler)
 
-    cfg_previo = copy.deepcopy(dict(cfg))
-    if not temp and not hr and not rain:
-        print("No se ha definido modelo para entrenar")
-        exit()
+    def generar_modelo(modelo: str, ) -> None:
+        if modelo == 'temperatura':
+            cfg_inner = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
+            handler = cfg_inner.pmodel.model.temperatura
+            F = 1
+            componente = slice(0, 1)
+        elif modelo == 'hr':
+            cfg_inner = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
+            handler = cfg_inner.pmodel.model.hr
+            F = 1
+            componente = slice(1, 2)
+        elif modelo == 'precipitacion':
+            cfg_inner = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
+            handler = cfg_inner.pmodel.model.precipitacion
+            F = len(metadata['bins'])
+            componente = slice(2, 2 + len(metadata['bins']))
+        else:
+            raise NotImplementedError  
         
-        
-    def pmodel_modelo(componentes: slice, kwargs_model: dict, lr: float, optimizer_name: str, save_model: bool, early_stop: int, plot: bool) -> None:
-        
-        TRAIN = cfg.zmodel.dataloaders.train.enable
-        VALIDATION = cfg.zmodel.dataloaders.validation.enable
-        print("")
-        print(f"\tTrain: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
-        print(f"Usando {cfg.paths.pmodel.runs} como ruta para runs")
-        print(f"Usando {cfg.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
-        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.train.keys() else cfg.pmodel.dataloaders.train.shuffle
+        EPOCHS = handler.epochs
+        kwargs_loss = handler.loss_function
+        TRAIN = cfg_inner.pmodel.dataloaders.train.enable
+        VALIDATION = cfg_inner.pmodel.dataloaders.validation.enable
+        print(f"Usando {cfg_inner.paths.pmodel.runs} como ruta para runs")
+        print(f"Usando {cfg_inner.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
+        print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
+        shuffle = False if 'shuffle' not in cfg_inner.pmodel.dataloaders.train.keys() else cfg_inner.pmodel.dataloaders.train.shuffle
         if TRAIN:
-            train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=componentes),
+            train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=componente),
                                         sampler=sa_pmodel.PModelSampler(datasets=train_dataset, batch_size=1, shuffle=shuffle),    
                                         batch_size=None,
                                         num_workers=2)
-        shuffle = False if 'shuffle' not in cfg.pmodel.dataloaders.validation.keys() else cfg.pmodel.dataloaders.validation.shuffle
+        shuffle = False if 'shuffle' not in cfg_inner.pmodel.dataloaders.validation.keys() else cfg_inner.pmodel.dataloaders.validation.shuffle
         if VALIDATION:
-            valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=componentes),    
+            valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=componente),    
                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),
                                         batch_size=None,
                                         num_workers=2)
             
         print(f"\tDataset de train: {len(train_dataloader)}")
         print(f"\tDataset de validacion: {len(valid_dataloader)}")
+        kwargs_model={"Fin": F, 
+                      "Fout": F,
+                      "gru_num_layers": handler.gru_n_layers,
+                      "hidden_size": handler.hidden_size,
+                      "hidden_layers": handler.hidden_layers}
         model = md_pmodel.RedGeneral(**kwargs_model)
         model = model.to(device)
         ## Funciones loss
         loss_fn = lf.LossFunction(**kwargs_loss)
-        model_optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr, weight_decay=lr / 10)
+        model_optimizer = getattr(optim, handler.optimizer_name)(model.parameters(), lr=handler.lr, weight_decay=handler.lr / 10)
         trainer = tr_pmodel.TorchTrainer( model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
-                                         checkpoint_folder= Path(cfg.paths.pmodel.checkpoints),
-                                         runs_folder= Path(cfg.paths.pmodel.runs),
+                                         checkpoint_folder= Path(cfg_inner.paths.pmodel.checkpoints),
+                                         runs_folder= Path(cfg_inner.paths.pmodel.runs),
                                          keep_best_checkpoint=True,
-                                         save_model= save_model,
-                                         save_model_path=Path(cfg.paths.pmodel.model),
-                                         early_stop=early_stop)
+                                         save_model= handler.save_model,
+                                         save_model_path=Path(cfg_inner.paths.pmodel.model),
+                                         early_stop=handler.early_stop)
         if TRAIN and VALIDATION:
-            trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=plot)
+            trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=handler.plot_intermediate_results)
         else:
-            trainer.train(EPOCHS, train_dataloader, resume_only_model=True, resume=True, plot=plot)
+            trainer.train(EPOCHS, train_dataloader, resume_only_model=True, resume=True, plot=handler.plot_intermediate_results)
         
-        with open(Path(cfg.paths.pmodel.checkpoints) / "valid_losses.pickle", 'rb') as handler:
+        with open(Path(cfg_inner.paths.pmodel.checkpoints) / "valid_losses.pickle", 'rb') as handler:
             valid_losses = pickle.load(handler)
         if valid_losses != {}:
             best_epoch = sorted(valid_losses.items(), key=lambda x:x[1])[0][0]
             print(f"Mejor loss de validacion: {best_epoch}")
     
-    
+    cfg_previo = copy.deepcopy(dict(cfg))
+    if not temp and not hr and not rain:
+        print("No se ha definido modelo para entrenar")
+        exit()
+        
     if temp:
         ## Parte especifica temperatura
         print("Entrenado modelo de temperatura...")
-        cfg = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
-        EPOCHS = cfg.pmodel.model.temperatura.epochs
-        kwargs_loss = cfg.pmodel.model.temperatura.loss_function
-        pmodel_modelo(componentes=slice(0, 1),
-                      kwargs_model={"Fin": 1, 
-                                    "Fout": 1,
-                                    "gru_num_layers": cfg.pmodel.model.temperatura.gru_n_layers,
-                                    "hidden_size": cfg.pmodel.model.temperatura.hidden_size,
-                                    "hidden_layers": cfg.pmodel.model.temperatura.hidden_layers},
-                      lr=cfg.pmodel.model.temperatura.lr,
-                      optimizer_name=cfg.pmodel.model.temperatura.optimizer_name,
-                      save_model=cfg.pmodel.model.temperatura.save_model,
-                      early_stop=cfg.pmodel.model.temperatura.early_stop,
-                      plot=cfg.pmodel.model.temperatura.plot_intermediate_results
-                      )
+        generar_modelo('temperatura')
     if hr:
         print("Entrando modelo de hr...")
-        cfg = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
-        EPOCHS = cfg.pmodel.model.hr.epochs
-        kwargs_loss = cfg.pmodel.model.hr.loss_function
-        pmodel_modelo(componentes=slice(1, 2),
-                      kwargs_model={"Fin": 1, 
-                                    "Fout": 1,
-                                    "gru_num_layers": cfg.pmodel.model.hr.gru_n_layers,
-                                    "hidden_size": cfg.pmodel.model.hr.hidden_size,
-                                    "hidden_layers": cfg.pmodel.model.hr.hidden_layers},
-                      lr=cfg.pmodel.model.hr.lr,
-                      optimizer_name=cfg.pmodel.model.hr.optimizer_name,
-                      save_model=cfg.pmodel.model.hr.save_model,
-                      early_stop=cfg.pmodel.model.hr.early_stop,
-                      plot=cfg.pmodel.model.hr.plot_intermediate_results
-                      )
+        generar_modelo('hr')
     if rain:
         print("Entrando modelo de precipitacion...")
-        cfg = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
-        EPOCHS = cfg.pmodel.model.hr.epochs
-        kwargs_loss = cfg.pmodel.model.hr.loss_function
-        pmodel_modelo(componentes=slice(2, 2 + len(metadata['bins'])),
-                      kwargs_model={"Fin": len(metadata['bins']), 
-                                    "Fout": len(metadata['bins']),
-                                    "gru_num_layers": cfg.pmodel.model.precipitacion.gru_n_layers,
-                                    "hidden_size": cfg.pmodel.model.precipitacion.hidden_size,
-                                    "hidden_layers": cfg.pmodel.model.precipitacion.hidden_layers},
-                      lr=cfg.pmodel.model.precipitacion.lr,
-                      optimizer_name=cfg.pmodel.model.precipitacion.optimizer_name,
-                      save_model=cfg.pmodel.model.precipitacion.save_model,
-                      early_stop=cfg.pmodel.model.precipitacion.early_stop,
-                      plot=cfg.pmodel.model.precipitacion.plot_intermediate_results
-                      )
+        generar_modelo('precipitacion')
 
 if __name__ == "__main__":
     main()

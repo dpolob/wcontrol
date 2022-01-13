@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 import common.predict.modules as predictor
 from common.utils.parser import parser
-from common.utils.kwargs_gen import generar_kwargs
+import common.utils.kwargs_gen as generar_kwargs
 from common.utils.datasets import dataset_pmodel as ds_pmodel
 from common.utils.datasets import sampler_pmodel as sa_pmodel
 from common.utils.datasets import dataset_pipeline as ds_pipeline
@@ -60,8 +60,8 @@ def zmodel(file):
         exit()
     
     print(f"Inicio del dataset en {metadata['fecha_min']}")
-    kwargs_dataloader = generar_kwargs()._dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
-    kwargs_prediccion = generar_kwargs()._predict(modelo='zmodel', cfg=cfg)
+    kwargs_dataloader = generar_kwargs.dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+    kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
  
     test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
     y_pred = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
@@ -118,7 +118,7 @@ def pmodel(file, temp, hr, rain):
         print(f"\tYa existen los datos temporales... Cargango datos de test desde el modelo pmodel desde {cfg.paths.pmodel.pmodel_test}")
     except (OSError, IOError) as e:
         print(f"\tGenerando datos de test...")
-        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         x_nwp = np.empty_like(y_real)
@@ -144,7 +144,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')
-        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
+        kwargs_prediccion = generar_kwargs.predict(modelo='pmodel', cfg=cfg)
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -171,7 +171,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')
-        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg) 
+        kwargs_prediccion = generar_kwargs.predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -198,7 +198,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')    
-        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg) 
+        kwargs_prediccion = generar_kwargs.predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -235,24 +235,31 @@ def pipeline(file):
         exit()
     
     # Realizar un predict del zmodel con los datos de la estacion pmodel
-    print(f"Inicio del dataset de test en {metadata['fecha_min']}")
-    kwargs_dataloader = generar_kwargs()._dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
-    kwargs_prediccion = generar_kwargs()._predict(modelo='zmodel', cfg=cfg)
-    test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-    y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-    y_real = np.empty_like(y_pred_zmodel)
-    y_nwp = np.empty_like(y_pred_zmodel)
-    assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
-    assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
-    assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
-    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
-        y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
-        y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
-       
-    y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-    y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-    y_nwp = np.squeeze(y_nwp, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-    
+    if Path('a.pickle').is_file():
+        with open(Path('a.pickle'), 'rb') as h:
+            a = pickle.load(h)
+        y_pred_zmodel, y_real, y_nwp = a[0], a[1], a[2]
+    else:
+        print(f"Inicio del dataset de test en {metadata['fecha_min']}")
+        kwargs_dataloader = generar_kwargs.dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
+        test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+        y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+        y_real = np.empty_like(y_pred_zmodel)
+        y_nwp = np.empty_like(y_pred_zmodel)
+        assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
+        assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
+        assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
+        for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
+            y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+            y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+        
+        y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+        y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+        y_nwp = np.squeeze(y_nwp, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+        with open(Path('a.pickle'), 'wb') as h:
+            pickle.dump([y_pred_zmodel, y_real, y_nwp], h)       
+            
     print(f"{y_pred_zmodel.shape=}")
     print(f"{y_real.shape=}")
     print(f"{y_nwp.shape=}")
@@ -260,41 +267,39 @@ def pipeline(file):
     # Realizar un predict del pmodel con los datos de la estacion pmodel
     # para cada uno de los modelos definidos
     
+    def generar(modelo: str) -> np.ndarray:
+        if modelo == 'temperatura':
+            cfg_inner = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
+            componente = slice(0, 1)
+        elif modelo == 'hr':
+            cfg_inner = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
+            componente = slice(1, 2)
+        elif modelo == 'precipitacion':
+            cfg_inner = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
+            componente = slice(2, 2 + len(metadata['bins']))
+        else:
+            raise NotImplementedError  
+            
+        pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=componente),
+                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
+                                        batch_size=None,
+                                        num_workers=2)
+        kwargs_prediccion = generar_kwargs.predict(modelo='pmodel', cfg=cfg_inner)
+        y_pred = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+        return y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
+        
+    
     cfg_previo = copy.deepcopy(dict(cfg))
     ## Parte especifica temperatura
     print("Prediccion modelo de temperatura...")
-    cfg = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
-    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(0, 1)),
-                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
-                                        batch_size=None,
-                                        num_workers=2)
-    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
-    y_pred_temp = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-    y_pred_temp = y_pred_temp.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
-    
+    y_pred_temp = generar('temperatura')
     ## Parte especifica hr
     print("Prediccion modelo de hr...")
-    cfg = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
-    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(1, 2)),
-                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
-                                        batch_size=None,
-                                        num_workers=2)
-    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
-    y_pred_hr = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-    y_pred_hr = y_pred_hr.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
-    
-     ## Parte especifica hr
+    y_pred_hr = generar('hr')
+    ## Parte especifica hr
     print("Prediccion modelo de hr...")
-    cfg = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
-    pipeline_dataloader = DataLoader(dataset=ds_pipeline.PipelineDataset(datasets=y_pred_zmodel, componentes=slice(2, 2 + len(metadata["bins"]))),
-                                        sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
-                                        batch_size=None,
-                                        num_workers=2)
-    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
-    y_pred_rain = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-    y_pred_rain = y_pred_rain.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)   
-    
-    
+    y_pred_rain = generar('precipitacion')
+       
     predicciones = {'y_real': y_real, 'y_pred_hr': y_pred_hr, 'y_pred_rain': y_pred_rain, 'y_pred_temp': y_pred_temp, 'y_nwp': y_nwp}    
    
     output = Path(cfg.paths.pipeline.predictions)
