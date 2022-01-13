@@ -44,6 +44,7 @@ paths:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
     predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
   
 preprocesado:
   outliers:
