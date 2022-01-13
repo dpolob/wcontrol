@@ -144,7 +144,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')
-        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -171,7 +171,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')
-        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg) 
+        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -198,7 +198,7 @@ def pmodel(file, temp, hr, rain):
                                         num_workers=2)
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')    
-        kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg) 
+        kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg) 
         y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
@@ -241,18 +241,21 @@ def pipeline(file):
     test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
     y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
     y_real = np.empty_like(y_pred_zmodel)
+    y_nwp = np.empty_like(y_pred_zmodel)
     assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
     assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
     assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
-    for i, (_, _, _, Y, _) in enumerate(tqdm(test_dataloader)):
+    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
         y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+        y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
        
     y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
     y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-
+    y_nwp = np.squeeze(y_nwp, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
     
     print(f"{y_pred_zmodel.shape=}")
     print(f"{y_real.shape=}")
+    print(f"{y_nwp.shape=}")
     
     # Realizar un predict del pmodel con los datos de la estacion pmodel
     # para cada uno de los modelos definidos
@@ -265,7 +268,7 @@ def pipeline(file):
                                         sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
                                         batch_size=None,
                                         num_workers=2)
-    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
     y_pred_temp = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
     y_pred_temp = y_pred_temp.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
     
@@ -276,7 +279,7 @@ def pipeline(file):
                                         sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
                                         batch_size=None,
                                         num_workers=2)
-    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
     y_pred_hr = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
     y_pred_hr = y_pred_hr.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
     
@@ -287,12 +290,12 @@ def pipeline(file):
                                         sampler=sa_pipeline.PipelineSampler(datasets=y_pred_zmodel, batch_size=1, shuffle=False),    
                                         batch_size=None,
                                         num_workers=2)
-    kwargs_prediccion = generar_kwargs._predict(modelo='pmodel', cfg=cfg)
+    kwargs_prediccion = generar_kwargs()._predict(modelo='pmodel', cfg=cfg)
     y_pred_rain = predictor.predict(pipeline_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
     y_pred_rain = y_pred_rain.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)   
     
     
-    predicciones = {'y_real': y_real, 'y_pred_hr': y_pred_hr, 'y_pred_rain': y_pred_rain, 'y_pred_temp': y_pred_temp}    
+    predicciones = {'y_real': y_real, 'y_pred_hr': y_pred_hr, 'y_pred_rain': y_pred_rain, 'y_pred_temp': y_pred_temp, 'y_nwp': y_nwp}    
    
     output = Path(cfg.paths.pipeline.predictions)
     output.parent.mkdir(parents=True, exist_ok=True)

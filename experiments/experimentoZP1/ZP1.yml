@@ -276,7 +276,7 @@ pmodel:
       hidden_size: 175  # optuna
       hidden_layers:
         0: 234
-      optimizer_name: "Adamax"
+      optimizer_name: "Adamax"  # optuna
     precipitacion:
       name: "RedGeneral"
       save_model: True
@@ -287,12 +287,13 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.005
-      gru_n_layers: 1
-      hidden_size: 50
+      lr: 0.001971576126654154  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 50  # optuna
       hidden_layers:
-        0: 50
-      optimizer_name: "AdamW"
+        0: 219
+        1: 89
+      optimizer_name: "AdamW"  # optuna
   dataloaders:
     train:
       enable: True
