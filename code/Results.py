@@ -53,7 +53,7 @@ def zmodel(file):
             predicciones = pickle.load(handler)
         print(f"Usando {cfg.paths.zmodel.predictions} como archivo de predicciones")
     except Exception as e:
-        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {ccfg.paths.zmodel.predictions} \
+        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.zmodel.predictions} \
             Mas info en: {e}")
         exit()
     
