@@ -11,3 +11,7 @@ importlib
 sklearn
 optuna
 copy
+flask
+flask-restful
+loggly-python-handler
+tinydb
