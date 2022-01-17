@@ -235,30 +235,26 @@ def pipeline(file):
         exit()
     
     # Realizar un predict del zmodel con los datos de la estacion pmodel
-    if Path('a.pickle').is_file():
-        with open(Path('a.pickle'), 'rb') as h:
-            a = pickle.load(h)
-        y_pred_zmodel, y_real, y_nwp = a[0], a[1], a[2]
-    else:
-        print(f"Inicio del dataset de test en {metadata['fecha_min']}")
-        kwargs_dataloader = generar_kwargs.dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
-        kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
-        test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-        y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-        y_real = np.empty_like(y_pred_zmodel)
-        y_nwp = np.empty_like(y_pred_zmodel)
-        assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
-        assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
-        assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
-        for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
-            y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
-            y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
-        
-        y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-        y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-        y_nwp = np.squeeze(y_nwp, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
-        with open(Path('a.pickle'), 'wb') as h:
-            pickle.dump([y_pred_zmodel, y_real, y_nwp], h)       
+
+    print(f"Inicio del dataset de test en {metadata['fecha_min']}")
+    kwargs_dataloader = generar_kwargs.dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
+    kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
+    test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+    y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    y_real = np.empty_like(y_pred_zmodel)
+    y_nwp = np.empty_like(y_pred_zmodel)
+    assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
+    assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
+    assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
+    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
+        y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+        y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
+    
+    y_pred_zmodel = np.squeeze(y_pred_zmodel, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+    y_real = np.squeeze(y_real, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+    y_nwp = np.squeeze(y_nwp, axis=1)  # (len(test), 1, 72, 10) -> (len(test), 1, 72, 10)
+    with open(Path('a.pickle'), 'wb') as h:
+        pickle.dump([y_pred_zmodel, y_real, y_nwp], h)       
             
     print(f"{y_pred_zmodel.shape=}")
     print(f"{y_real.shape=}")

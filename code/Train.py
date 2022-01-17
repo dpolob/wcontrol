@@ -238,7 +238,7 @@ def pmodel(file, temp, hr, rain):
     except:
         print(f"Generando datos de train...")
         Path(cfg.paths.pmodel.pmodel_train).parent.mkdir(parents=True, exist_ok=True)
-        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)
@@ -257,7 +257,7 @@ def pmodel(file, temp, hr, rain):
     except:
         print(f"Generando datos de validacion...")
         Path(cfg.paths.pmodel.pmodel_valid).parent.mkdir(parents=True, exist_ok=True)
-        kwargs_dataloader = generar_kwargs()._dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
+        kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         pred_nwp = np.empty_like(y_real)

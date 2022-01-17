@@ -36,8 +36,12 @@ paths:
     checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/{{prediccion}}"
     model: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/model_{{prediccion}}.pth"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/outputs/{{prediccion}}/{{epoch}}/viz/"
-  completo:
-    resultados: ""
+  pipeline:
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
+    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
+  
 
 preprocesado:
   outliers:
@@ -281,22 +285,23 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.005
-      gru_n_layers: 1
-      hidden_size: 50
+      lr: 0.001971576126654154  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 50  # optuna
       hidden_layers:
-        0: 50
-      optimizer_name: "AdamW"
+        0: 219
+        1: 89
+      optimizer_name: "AdamW"  # optuna
   dataloaders:
     train:
       enable: True
       fecha_inicio: "2020-03-15 00:00:00"
-      fecha_fin: "2021-01-15 23:00:00"
+      fecha_fin: "2021-01-31 23:00:00"
       shuffle: True
     validation:
       enable: True
-      fecha_inicio: "2021-01-16 00:00:00"
-      fecha_fin: "2021-03-31 23:00:00"
+      fecha_inicio: "2021-02-01 00:00:00"
+      fecha_fin: "2021-03-30 23:00:00"
       shuffle: True
     test:
       enable: True
