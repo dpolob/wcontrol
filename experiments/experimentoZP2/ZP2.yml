@@ -312,4 +312,4 @@ pmodel:
     muestras: "range" # random, all, list, range
     inicio: 0
     fin: "end"
-    paso: 50
+    paso: 10
