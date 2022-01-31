@@ -106,7 +106,7 @@ def indice_lang(precipitacion: np.ndarray, temperatura: np.ndarray,  muestras_di
     Returns:
         np.ndarray:  Indice de Lang
     """
-    return mediaMovil(precipitacion, 365 * muestras_dia) / mediaMovil(temperatura, 365 * muestras_dia)
+    return mediaMovil(precipitacion, 30 * muestras_dia) / mediaMovil(temperatura, 30 * muestras_dia)
 
 def indice_angtrom(precipitacion: np.ndarray, temperatura: np.ndarray, muestras_dia: int=1) -> np.ndarray:
     """Índice de Angström: es igual a la precipitación media mensual
