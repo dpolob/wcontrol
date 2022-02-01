@@ -46,3 +46,18 @@ class Escalador():
         X_std = (X - self.Xmin) / (self.Xmax - self.Xmin)
         X = X_std * (self.max - self.min) + self.min
         return X
+    
+    def inverse_transform(self, X: np.ndarray) -> np.ndarray:
+        """Desescala X según el patron MaxMin
+        X_std = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
+        X_scaled = X_std * (max - min) + min
+
+        Args:
+            X (np.ndarray): Array a convertir
+
+        Returns:
+            [np.ndarray]: Array transformado
+        """
+        X_std = (X - self.min) / (self.max - self.min)
+        X = X_std * (self.Xmax - self.Xmin) + self.Xmin
+        return X
