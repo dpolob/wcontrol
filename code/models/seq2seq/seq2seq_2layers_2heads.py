@@ -182,8 +182,8 @@ class EncoderDecoderWrapper(nn.Module):
         _, encoder_hidden = self.encoder(encoder_input)  # (N, HID)
 
         decoder_hidden = encoder_hidden  # (N, HID)
-        # (N, Ft + Fout) = (N, Ft) + (N, Fout) 
-        decoder_input = torch.cat((y_t[:, 0, :], y[:, 0, :]), axis=1)
+        
+        
  
          # elimino la componente extra que me sobra
         y_t = y_t[:, :-1, :]
@@ -191,6 +191,9 @@ class EncoderDecoderWrapper(nn.Module):
             y = y[:, :-1, :]
         if p is not None:
             p = p[:, :-1, :]
+            
+        # (N, Ft + Fout) = (N, Ft) + (N, Fout) 
+        decoder_input = torch.cat((y_t[:, 0, :], p[:, 0, :]), axis=1)
 
         outputs = torch.zeros(size=(x_f.size(0), self.output_sequence_len, self.output_size), device=self.device, dtype=torch.float)  # (N, Ly, Fout (hr + temp + 8 clases)
         for i in range(self.output_sequence_len):

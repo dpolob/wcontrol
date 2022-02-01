@@ -105,19 +105,17 @@ class TorchTrainer(BaseTrainer):
                 predictions.append(y_pred.cpu().numpy())
         return predictions
 
-    def predict_one(self, Xf, X, Yt):
-        """pass single batch input, without batch axis"""
+    def predict_one(self, Xf, X, Yt, P):
         self.model.eval()
+        predictions = []
         with torch.no_grad():
             Xf = Xf.to(self.device)
-            X = X.to(self.device)
             Yt = Yt.to(self.device)
+            P = P.to(self.device)
+            y_pred = self.model(Xf, Xf, Yt, Yt, P)
+            predictions.append(y_pred.cpu().numpy())
+        return predictions    
 
-            y_pred = self.model(X)
-            if self.device == 'cuda':
-                y_pred = y_pred.cpu()
-            y_pred = y_pred.numpy()
-            return y_pred
     
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
