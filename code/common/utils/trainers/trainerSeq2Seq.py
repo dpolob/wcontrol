@@ -105,7 +105,7 @@ class TorchTrainer(BaseTrainer):
                 predictions.append(y_pred.cpu().numpy())
         return predictions
 
-    def predict_one(self, Xf, X, Yt, P):
+    def predict_one(self, Xf, Yt, P):
         self.model.eval()
         predictions = []
         with torch.no_grad():
@@ -113,8 +113,7 @@ class TorchTrainer(BaseTrainer):
             Yt = Yt.to(self.device)
             P = P.to(self.device)
             y_pred = self.model(Xf, Xf, Yt, Yt, P)
-            predictions.append(y_pred.cpu().numpy())
-        return predictions    
+        return y_pred
 
     
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
