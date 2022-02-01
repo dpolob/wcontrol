@@ -53,7 +53,6 @@ from api import api_modules
 import time
 import traceback
 
-
 # logger = logging.getLogger()
 
 class Prediccion(Resource):
@@ -63,36 +62,35 @@ class Prediccion(Resource):
         now = datetime.datetime.now()
         past = now - datetime.timedelta(days=367) 
         
+        ### PASADO
         try:
-            dfs = []
-            
-            for estacion  in secrets.estaciones_zona: 
-                id, datos = list(estacion.items())[0]
-                data = {}
-                data['altitud'] = datos['altitud']
-                data['longitud'] = datos['longitud']
-                data['latitud'] = datos['latitud']
-                data['nombre'] = datos['nombre']
-                
-                for metrica in secrets.estaciones_metricas:
-                    api_string = f"{secrets.url_cesens}/api/datos/{str(id)}/{str(metrica)}/{past.strftime('%Y%m%d')}-{now.strftime('%Y%m%d')}"
-                    data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": token})
-                    data[metrica] = ([v for k, v in dict(json.loads(data_response_cesens.text)).items()])
-                data['fecha'] = [datetime.datetime.fromtimestamp(int(k))
-                                for k, _ in dict(json.loads(data_response_cesens.text)).items()] ## str -> timestamp -> str
-                data['fecha_maxima'] = max(data['fecha'])
-                data['fecha_minima'] = min(data['fecha'])
-            
-                dfs.append(data)
-            df, metadata = api_modules.generar_variables(estaciones=dfs, outliers=secrets.outliers_zona, pasado=secrets.pasado,
-                                                         now=now)
-                
-                
-            print(metadata)
-            return Response(f"OK", status=200, mimetype='text/plain') 
+            dfs = api_modules.fetch_pasado(url=secrets.url_cesens, 
+                                                 token=secrets.token_cesens, 
+                                                 estaciones=secrets.estaciones_zona,
+                                                 metricas=secrets.estaciones_metricas,
+                                                 now=now,
+                                                 past=past)
+            df_pasado, metadata = api_modules.generar_variables_pasado(estaciones=dfs, 
+                                                                       outliers=secrets.outliers_zona,
+                                                                       pasado=secrets.pasado,
+                                                                       now=now,
+                                                                       escaladores=secrets.escaladores)
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
-            return Response(f"No es posible conectar con Cesens. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+            return Response(f"Problemas en la conexion con Cesens. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+        ### FUTURO
+        try:
+            
+            df_futuro = api_modules.fetch_futuro(url=secrets.url_nwp, 
+                                                 now=now.replace(minute=0, hour=0, second=0, microsecond=0))
+
+            nwp = api_modules.generar_variables_futuro(df_futuro,
+                                                       escaladores=secrets.escaladores)
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en la conexion con NWP. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+            
+        return Response(f"OK", status=200, mimetype='text/plain') 
                 
                 
         
