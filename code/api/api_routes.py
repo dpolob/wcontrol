@@ -92,7 +92,6 @@ class Prediccion(Resource):
             nwp = api_modules.generar_variables_futuro(df_futuro,
                                                     estaciones=df_pasado,
                                                        escaladores=secrets.escaladores)
-
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
             return Response(f"Problemas en la conexion con NWP. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
@@ -117,7 +116,7 @@ class Prediccion(Resource):
                                   device=device,
                                   checkpoint_folder= path_checkpoints)
         trainer._load_best_checkpoint()
-        y_pred = trainer.predict_one(Xf, Xf, Yt, P)
+        y_pred = trainer.predict_one(Xf, Yt, P)
 
         print(f"{y_pred[0].shape=}")
 

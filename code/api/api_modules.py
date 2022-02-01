@@ -282,23 +282,9 @@ def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
         if hora == 0:
             dia = dia + 1
         futuro['fecha'].append((now + timedelta(hours=hora, days=dia)))
-    
-    if ((future + 1) - len(futuro['fecha'])) == 2: # 71 a 73
-        if hora + 1 == 24:
-            dia = dia + 1
-            hora = 0
+    cuenta = future + 1 - len(futuro['fecha'])
+    for _ in range(cuenta): # 71 a 73
         futuro['fecha'].append((now + timedelta(hours=hora + 1, days=dia)))
-        if hora + 2 == 24:
-                dia = dia + 1
-                hora = 0
-        futuro['fecha'].append((now + timedelta(hours=hora + 2, days=dia)))
-        cuenta = 2
-    elif ((future + 1) - len(futuro['fecha'])) == 1:  # 72 a 73 
-        if hora + 1 == 24:
-            dia = dia + 1
-            hora = 0
-        futuro['fecha'].append((now + timedelta(hours=hora + 1, days=dia)))
-        cuenta = 1
     
     temperaturas = re.findall(r"00\n[0-9]+°", result)
     for temperatura in temperaturas:
