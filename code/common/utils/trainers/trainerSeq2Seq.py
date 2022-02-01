@@ -115,8 +115,7 @@ class TorchTrainer(BaseTrainer):
             y_pred = self.model(Xf, Xf, Yt, Yt, P)
             predictions.append(y_pred.cpu().numpy())
         return predictions    
-)
-            return y_pred
+
     
     def train(self, epochs, train_dataloader, valid_dataloader=None, resume=True, resume_only_model=False, plot=False):
         self.writer = SummaryWriter(self.runs_path)
