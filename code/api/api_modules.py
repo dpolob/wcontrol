@@ -48,6 +48,15 @@ import json
 from typing import List
 
 
+import numpy as np
+import pandas as pd
+import torch
+
+from torch.utils.data.sampler import Sampler
+from torch.utils.data import Dataset
+    
+
+
 def no_NaNs(df: pd.DataFrame=None) -> bool:
     """ Chequea si un dataframe tiene NaNs"""
     
@@ -149,8 +158,7 @@ def recortar(df: pd.DataFrame, fecha_maxima: datetime, pasado: int):
     df = df.loc[df.index <= fecha_maxima, :]
     return df.iloc[len(df) - pasado:len(df), :]
     
-        
-def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now: datetime, escaladores: dict ) -> tuple:
+def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now: datetime, escaladores: dict, cdg: list) -> tuple:
    
     estaciones_def = []
     fechas_maximas = []
@@ -212,14 +220,13 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
         latitudes.append(estacion["latitud"])
         altitudes.append(estacion["altitud"])
                           
-        dfs.append(df)
+        dfs.append(df.copy())
 
 
-    cdg = distanciasCdG(latitudes, longitudes, altitudes)
     for i, df in enumerate(dfs):
         df['distancia'] = haversine(lat1=latitudes[i], long1=longitudes[i], lat2=cdg[0], long2=cdg[1])
         df['altitud'] = altitudes[i] - cdg[2]
-        df.reset_index(drop=True)
+        df.reset_index(drop=True, inplace=True)
 
     parametros = dict()
     for metrica in (['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd):
@@ -258,7 +265,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
     metadata['bins'] = bins
     return (dfs, metadata)
 
-def fetch_futuro(url: str, now: datetime) -> pd.DataFrame:
+def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     futuro = {"fecha": [], "temperatura": [], "hr": [], "precipitacion": []}
     req = Request(url)
     html_page = urlopen(req)
@@ -268,39 +275,60 @@ def fetch_futuro(url: str, now: datetime) -> pd.DataFrame:
     
     horas = re.findall(r"\n[0-9]{1,2}:[0-9]{1,2}\n", result)
     dia=0
+    cuenta = 0
     for hora in horas:
         hora = re.sub(r"\n","", hora)
         hora = int(re.split(r":", hora)[0])
         if hora == 0:
             dia = dia + 1
         futuro['fecha'].append((now + timedelta(hours=hora, days=dia)))
-    #futuro['fecha'].append((now + timedelta(hours=hora, days=dia)))
+    
+    if ((future + 1) - len(futuro['fecha'])) == 2: # 71 a 73
+        if hora + 1 == 24:
+            dia = dia + 1
+            hora = 0
+        futuro['fecha'].append((now + timedelta(hours=hora + 1, days=dia)))
+        if hora + 2 == 24:
+                dia = dia + 1
+                hora = 0
+        futuro['fecha'].append((now + timedelta(hours=hora + 2, days=dia)))
+        cuenta = 2
+    elif ((future + 1) - len(futuro['fecha'])) == 1:  # 72 a 73 
+        if hora + 1 == 24:
+            dia = dia + 1
+            hora = 0
+        futuro['fecha'].append((now + timedelta(hours=hora + 1, days=dia)))
+        cuenta = 1
     
     temperaturas = re.findall(r"00\n[0-9]+°", result)
     for temperatura in temperaturas:
         t = re.sub(r"°","", temperatura)
         t = int(re.split(r"\n", t)[1])
         futuro['temperatura'].append(int(t))
-    #futuro['temperatura'].append(int(t))      
+    for _ in range(cuenta):
+        futuro['temperatura'].append(int(t))      
     
     humedades = re.findall(r"\nHumedad\n[0-9]+%\n", result)
     for humedad in humedades:
         h = re.sub(r"%", "", humedad)
         h = re.split(r"\n", h)[2]
         futuro['hr'].append(int(h))
-    #futuro['hr'].append(int(h))
+    for _ in range(cuenta):
+        futuro['hr'].append(int(h))
     
     precipitaciones = re.findall(r"\nLluvias\n[0-9]+ mm\n", result)
     for precipitacion in precipitaciones:
         h = re.sub(r" mm", "", precipitacion)
         h = re.split(r"\n", h)[2]
         futuro['precipitacion'].append(int(h))
-    # futuro['precipitacion'].append(int(h))
+    for _ in range(cuenta):
+        futuro['precipitacion'].append(int(h))
     
     return(pd.DataFrame(futuro))
 
 def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: datetime, past:datetime) -> List[pd.DataFrame]:
     dfs = []
+    
     for estacion in estaciones: 
         id, datos = list(estacion.items())[0]
         data = {}
@@ -313,7 +341,7 @@ def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: da
         for metrica in metricas:
             api_string = f"{url}/api/datos/{str(id)}/{str(metrica)}/{past.strftime('%Y%m%d')}-{now.strftime('%Y%m%d')}"
             data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": token})
-            data[metrica] = ([v for k, v in dict(json.loads(data_response_cesens.text)).items()])
+            data[metrica] = [v for k, v in dict(json.loads(data_response_cesens.text)).items()]
             fechas_parciales.append(max([datetime.fromtimestamp(int(k)) for k, v in dict(json.loads(data_response_cesens.text)).items()]))
 
         data['fechas_parciales'] = fechas_parciales
@@ -325,8 +353,9 @@ def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: da
         dfs.append(data)
     return dfs
 
-
-def generar_variables_futuro(nwp: pd.DataFrame, escaladores: dict ) -> pd.DataFrame:
+def generar_variables_futuro(nwp: pd.DataFrame, escaladores: dict, estaciones: list ) -> List[pd.DataFrame]:
+    
+    dfs = []
     nwp.set_index('fecha', drop=True, inplace=True)
     nwp = temporales(nwp)
     
@@ -351,9 +380,48 @@ def generar_variables_futuro(nwp: pd.DataFrame, escaladores: dict ) -> pd.DataFr
     nwp.drop(columns=['nwp_clase_precipitacion'], inplace=True)
     for _ in range(len(bins)):
         nwp['nwp_clase_precipitacion_' + str(_)] = df_aux1['nwp_clase_precipitacion_' + str(_)].values
-        
     if not no_NaNs(nwp):
         print(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el clasificador")
         raise Exception(f"[API][generar_variables] FAIL Estacion: NWP Hay Nans! en el clasificador")
     
-    return nwp
+    nwp.reset_index(drop=True, inplace=True)
+    
+
+    for estacion in estaciones:
+        distancia = estacion.loc[0, 'distancia']
+        altitud = estacion.loc[0, 'altitud']
+        
+        nwp['distancia'] = distancia
+        nwp['altitud'] = altitud
+        dfs.append(nwp.copy())    
+    
+    return dfs
+
+
+
+
+ 
+def fff(datasets: list, nwps: pd.DataFrame, pasado: int, futuro: int, etiquetaF: list=None, etiquetaT: list=None, etiquetaP: list=None) -> tuple:
+        
+    batches = len(datasets)
+    X_f = np.empty(shape=(batches, # batches
+                              pasado, # sequences
+                              len(etiquetaF)))  # features 
+    Y_t = np.empty(shape=(batches, # batches
+                              futuro + 1, # sequences
+                              len(etiquetaT)))  # etiquetaF
+    P = np.empty(shape=(batches, # batches
+                            futuro + 1, # sequences + 1 
+                            len(etiquetaP)))  # etiquetaP
+        
+    for i, (df, nwp) in enumerate(zip(datasets, nwps)):
+        X_f[i] = df.loc[: , etiquetaF].values
+        Y_t[i] = nwp.loc[:, etiquetaT].values
+        P[i] = nwp.loc[:, etiquetaP].values
+    
+    return (torch.from_numpy(X_f).float(),  # (batches, Lx + 1, Ff)
+
+                torch.from_numpy(Y_t).float(),  # (batches, Ly + 1, Ft)
+
+                torch.from_numpy(P).float())  # (batches, Ly + 1, Fnwp)
+    

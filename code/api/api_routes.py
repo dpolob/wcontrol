@@ -53,7 +53,11 @@ from api import api_modules
 import time
 import traceback
 
+import torch
+import numpy as np
 # logger = logging.getLogger()
+from pathlib import Path
+from common.utils.trainers import trainerSeq2Seq as tr
 
 class Prediccion(Resource):
        
@@ -65,7 +69,7 @@ class Prediccion(Resource):
         ### PASADO
         try:
             dfs = api_modules.fetch_pasado(url=secrets.url_cesens, 
-                                                 token=secrets.token_cesens, 
+                                                 token=token, 
                                                  estaciones=secrets.estaciones_zona,
                                                  metricas=secrets.estaciones_metricas,
                                                  now=now,
@@ -74,21 +78,58 @@ class Prediccion(Resource):
                                                                        outliers=secrets.outliers_zona,
                                                                        pasado=secrets.pasado,
                                                                        now=now,
-                                                                       escaladores=secrets.escaladores)
+                                                                       escaladores=secrets.escaladores,
+                                                                       cdg=secrets.CdG)
+
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
             return Response(f"Problemas en la conexion con Cesens. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
         ### FUTURO
         try:
-            
             df_futuro = api_modules.fetch_futuro(url=secrets.url_nwp, 
-                                                 now=now.replace(minute=0, hour=0, second=0, microsecond=0))
-
+                                                 now=now.replace(minute=0, hour=0, second=0, microsecond=0),
+                                                 future=72)
             nwp = api_modules.generar_variables_futuro(df_futuro,
+                                                    estaciones=df_pasado,
                                                        escaladores=secrets.escaladores)
+
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
             return Response(f"Problemas en la conexion con NWP. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+        
+        
+        ## MONTAR NUMPY
+        
+        Xf, Yt, P = api_modules.fff(datasets=df_pasado,nwps=nwp, pasado=secrets.pasado, futuro=72, etiquetaF=secrets.Ff, etiquetaT=secrets.Ft, etiquetaP=secrets.Fnwp)
+                
+        print(f"{Xf.shape=}")
+        print(f"{Yt.shape=}")
+        print(f"{P.shape=}")
+        
+        device = secrets.device
+        path_checkpoints = secrets.path_checkpoints
+        use_checkpoint = 'best'
+        path_model = secrets.zmodel
+        model = torch.load(Path(path_model) , map_location='cpu')
+        model.to(device)
+
+        trainer = tr.TorchTrainer(model=model,
+                                  device=device,
+                                  checkpoint_folder= path_checkpoints)
+        trainer._load_best_checkpoint()
+        y_pred = trainer.predict_one(Xf, Xf, Yt, P)
+
+        print(f"{y_pred[0].shape=}")
+
+        
+        # N = len(df_pasado)
+        # Lx = secrets.pasado
+        # Ff = len(df_pasado[0])
+        # arrays = np.array()
+        # for df in df_pasado:
+        #     arrays.append(df.to_numpy())
+            
+        # X_f = np.concatenate(arrays)
             
         return Response(f"OK", status=200, mimetype='text/plain') 
                 
