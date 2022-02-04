@@ -286,7 +286,7 @@ def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     for _ in range(cuenta): # 71 a 73
         futuro['fecha'].append((now + timedelta(hours=hora + 1, days=dia)))
     
-    temperaturas = re.findall(r"00\n[0-9]+°", result)
+    temperaturas = re.findall(r"00\n-?[0-9]+°", result)
     for temperatura in temperaturas:
         t = re.sub(r"°","", temperatura)
         t = int(re.split(r"\n", t)[1])
@@ -302,7 +302,7 @@ def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     for _ in range(cuenta):
         futuro['hr'].append(int(h))
     
-    precipitaciones = re.findall(r"\nLluvias\n[0-9]+ mm\n", result)
+    precipitaciones = re.findall(r"\nLluvias\n[0-9]+.?[0-9]? mm\n", result)
     for precipitacion in precipitaciones:
         h = re.sub(r" mm", "", precipitacion)
         h = re.split(r"\n", h)[2]
