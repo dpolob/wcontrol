@@ -43,8 +43,11 @@ paths:
   pipeline:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    dataset_zona: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_zona_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
     predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
+    temp: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/temp/"
   
 preprocesado:
   outliers:
@@ -207,18 +210,18 @@ zmodel:
   dataloaders:
     train:
       enable: True
-      fecha_inicio: "2020-01-01 00:00:00"
-      fecha_fin: "2021-01-31 23:00:00"
+      fecha_inicio: "2018-01-15 00:00:00"
+      fecha_fin: "2021-01-15 23:00:00"
       shuffle: True
     validation:
       enable: True
-      fecha_inicio: "2021-02-01 00:00:00"
-      fecha_fin: "2021-03-30 23:00:00"
+      fecha_inicio: "2021-01-16 00:00:00"
+      fecha_fin: "2021-03-31 23:00:00"
       shuffle: True
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      fecha_fin: "2021-04-30 23:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
       use_checkpoint: best
   resultados:
     visualizacion:
