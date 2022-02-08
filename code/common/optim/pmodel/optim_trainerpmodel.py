@@ -39,6 +39,7 @@ class TorchTrainer(BaseTrainer):
     def _loss_batch(self, X, Y,  optimize, return_ypred=False, rain=False):
         X = X.to(self.device)
         Y = Y.to(self.device)
+        self.loss_fn = self.loss_fn.to(self.device)
         
         y_pred = self.model(X)
         if rain:
