@@ -45,6 +45,7 @@ class TorchTrainer(BaseTrainer):
         if rain:
             Y = torch.argmax(Y, dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(1, 72, 8) -> argmax(dim=-1) -> (1, 72) -> reshape(-1,1) -> (72, 1) -> squeeze() -> (72)
             y_pred = y_pred.squeeze()  # y_pred(1, 72, 8) -> squeeze(axis=0) -> (72, 8)
+
        
         loss = self.loss_fn(y_pred, Y)
                      
