@@ -32,6 +32,9 @@ paths:
   pmodel:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+#    dataset_zmodel: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
+#    dataset_zmodel_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    
     pmodel_train: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_train.pickle"
     pmodel_valid: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_valid.pickle"
     pmodel_test: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_test.pickle"
@@ -43,8 +46,11 @@ paths:
   pipeline:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    dataset_zona: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_zona_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
     predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
+    temp: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/temp/"
   
 preprocesado:
   outliers:
@@ -207,18 +213,19 @@ zmodel:
   dataloaders:
     train:
       enable: True
-      fecha_inicio: "2020-01-01 00:00:00"
-      fecha_fin: "2021-01-31 23:00:00"
+      fecha_inicio: "2018-01-15 00:00:00"
+      fecha_fin: "2021-01-15 23:00:00"
       shuffle: True
     validation:
       enable: True
-      fecha_inicio: "2021-02-01 00:00:00"
-      fecha_fin: "2021-03-30 23:00:00"
+      fecha_inicio: "2021-01-16 00:00:00"
+      fecha_fin: "2021-03-31 23:00:00"
       shuffle: True
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      fecha_fin: "2021-04-30 23:00:00"
+      # fecha_fin: "2021-07-31 23:00:00"
+      fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
     visualizacion:
@@ -285,9 +292,11 @@ pmodel:
       early_stop: 5
       epochs: 25
       loss_function:
-        loss_fn: L1
+        loss_fn: CrossEntropyLoss
         reduction: mean
         coefs: None
+        weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
+        #[1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]
       lr: 0.001971576126654154  # optuna
       gru_n_layers: 2  # optuna
       hidden_size: 50  # optuna
@@ -299,6 +308,7 @@ pmodel:
     train:
       enable: True
       fecha_inicio: "2020-03-15 00:00:00"
+      #fecha_inicio: "2020-12-15 00:00:00"
       fecha_fin: "2021-01-15 23:00:00"
       shuffle: True
     validation:
@@ -309,7 +319,8 @@ pmodel:
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      fecha_fin: "2021-07-31 23:00:00"
+      # fecha_fin: "2021-07-31 23:00:00"
+      fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
     muestras: "range" # random, all, list, range

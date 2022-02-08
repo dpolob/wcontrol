@@ -39,11 +39,13 @@ class TorchTrainer(BaseTrainer):
     def _loss_batch(self, X, Y,  optimize, return_ypred=False, rain=False):
         X = X.to(self.device)
         Y = Y.to(self.device)
+        self.loss_fn = self.loss_fn.to(self.device)
         
         y_pred = self.model(X)
         if rain:
             Y = torch.argmax(Y, dim=-1).reshape(-1, 1).squeeze().type(torch.long)  # Y(1, 72, 8) -> argmax(dim=-1) -> (1, 72) -> reshape(-1,1) -> (72, 1) -> squeeze() -> (72)
             y_pred = y_pred.squeeze()  # y_pred(1, 72, 8) -> squeeze(axis=0) -> (72, 8)
+
        
         loss = self.loss_fn(y_pred, Y)
                      

@@ -37,7 +37,7 @@ def generar_test_dataset(**kwargs) -> DataLoader:
  
     x = (fecha_inicio_test - inicio).days * 24 + (fecha_inicio_test - inicio).seconds / 3600
     y = (fecha_fin_test - inicio).days * 24 + (fecha_fin_test - inicio).seconds / 3600
-    print(f"Generando dataset desde {x} a {y}")
+    print(f"Generando dataset desde {x} a {y}: {fecha_inicio_test} a {fecha_fin_test}")
     
     # dfs_test = [_.loc[(_.index >= x ) & (_.index <= y), :] for _ in datasets] con esta instruccion
     # estamos limitando el dataset. La primera prediccion sera desde la fecha indicada + PASADO (de esto

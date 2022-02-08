@@ -39,6 +39,8 @@ paths:
   pipeline:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    dataset_zona: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_zona_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
     predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
   
@@ -201,6 +203,7 @@ zmodel:
       - nwp_clase_precipitacion_5
       - nwp_clase_precipitacion_6
       - nwp_clase_precipitacion_7
+  
   dataloaders:
     train:
       enable: True
@@ -215,7 +218,7 @@ zmodel:
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      fecha_fin: "2021-04-30 23:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
       use_checkpoint: best
   resultados:
     visualizacion:
@@ -292,6 +295,7 @@ pmodel:
         0: 219
         1: 89
       optimizer_name: "AdamW"  # optuna
+  
   dataloaders:
     train:
       enable: True

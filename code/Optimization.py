@@ -219,7 +219,7 @@ def objectivepmodel(trial):
         print("No se han cargado los dataset... por favor generarlos antes")
         exit()
     
-    def entrenador_optimo(Fin: int, Fout: int, componente: slice, kwargs_loss: dict, cfg=cfg):
+    def entrenador_optimo(Fin: int, Fout: int, componente: slice, kwargs_loss: dict, cfg=cfg, rain=False):
 
         EPOCHS = 25
         TRAIN = cfg.zmodel.dataloaders.train.enable
@@ -245,20 +245,20 @@ def objectivepmodel(trial):
         loss_fn = lf.LossFunction(**kwargs_loss)
         model_optimizer = getattr(optim, model_optimizer_name)(model.parameters(), lr=lr, weight_decay=lr / 10)
         
-        trainer = tr_pmodel.TorchTrainer(name=name, model=model, optimizer=model_optimizer, loss_fn=loss_fn, device=device)
+        trainer = tr_pmodel.TorchTrainer(name=name, model=model, optimizer=model_optimizer, loss_fn=loss_fn, device=device, rain=rain)
 
         start_epoch = 0
         for i_epoch in range(start_epoch, start_epoch + EPOCHS):
             model.train()
 
             for (X, Y) in train_dataloader:
-                loss = trainer._loss_batch(X, Y, optimize=True)
+                loss = trainer._loss_batch(X, Y, optimize=True, rain=rain)
             print(f"Loss {i_epoch}: {loss}")    
         
             model.eval()
             loss_values = []
             for X, Y in valid_dataloader:
-                loss_value = trainer._loss_batch(X, Y, optimize=False)
+                loss_value = trainer._loss_batch(X, Y, optimize=False, rain=rain)
                 loss_values.append(loss_value)
             loss_value = np.mean(loss_values)
             print(f"V_Loss {i_epoch}: {loss_value}")
@@ -273,7 +273,7 @@ def objectivepmodel(trial):
     if mhr:
         return entrenador_optimo(Fin=1, Fout=1,componente=slice(1, 2), kwargs_loss=cfg.pmodel.model.hr.loss_function)
     if mrain:
-        return entrenador_optimo(Fin=len(metadata["bins"]), Fout=len(metadata["bins"]), componente=slice(2, 2 + len(metadata["bins"])), kwargs_loss=cfg.pmodel.model.precipitacion.loss_function)
+        return entrenador_optimo(Fin=len(metadata["bins"]), Fout=len(metadata["bins"]), componente=slice(2, 2 + len(metadata["bins"])), kwargs_loss=cfg.pmodel.model.precipitacion.loss_function, rain=True)
     
     
     
@@ -323,7 +323,7 @@ def pmodel(file, temp, hr, rain):
         storage_name = "sqlite:///{}.db".format(study_name)
         #storage_name = "mysql://root:root@127.0.0.1:3306/prueba"
         study = optuna.create_study(study_name=study_name, storage=storage_name, direction="minimize", load_if_exists=True)
-        study.optimize(objectivepmodel, n_trials=50)  # son trail por proceso, no trails totales
+        study.optimize(objectivepmodel, n_trials=20)  # son trail por proceso, no trails totales
 
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
