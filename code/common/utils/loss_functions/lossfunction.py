@@ -21,6 +21,7 @@ class LossFunction(nn.Module):
         self.loss_fn = kwargs.get('loss_fn', 'mse')
         self.reduction = kwargs.get('reduction', 'mean')
         self.coefs = kwargs.get(tuple('coefs'), (0.5, 0.5))
+        self.weights = kwargs.get('weights', None)
                 
         if self.loss_fn == 'mse':
             self.mse = nn.MSELoss(reduction=self.reduction)
@@ -35,6 +36,8 @@ class LossFunction(nn.Module):
             self.l1 = nn.L1Loss(reduction=self.reduction)
         elif self.loss_fn == 'mape' or self.loss_fn == 'maxMAPE' or self.loss_fn == 'maxError':
             pass
+        elif self.loss_fn == 'CrossEntropyLoss':
+            self.loss_cel = nn.CrossEntropyLoss(weight=torch.tensor(self.weights))
         else:
             raise Exception("Loss function no definida")
         
@@ -56,3 +59,5 @@ class LossFunction(nn.Module):
             return torch.max(torch.mean(torch.abs((y - y_pred) / torch.clamp(y, min=1e-7)), axis=0))
         if self.loss_fn == 'maxError':
             return torch.mean(torch.max(torch.abs(y - y_pred), axis=0)[0])
+        if self.loss_fn == 'CrossEntropyLoss':
+            return self.loss_cel(y_pred, y) # input, target

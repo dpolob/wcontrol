@@ -244,9 +244,7 @@ def pipeline(file):
             print(f"\t{OK}")
     except Exception as e:
         print(f"\t{FAIL}")
-        print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pipeline.dataset} \
-            con el dataset para el modelo de parcela o {cfg.paths.pipeline.dataset_metadata} de metadatos del dataset del \
-            modelo de parcela. Mas info en: {e}")
+        print(f"Algunos de los arcivos no existe. Mas info en: {e}")
         exit()
     
     print(Fore.YELLOW + "Prediccion con el modelo zonal del conjunto de test desde datos del dataset de estaciones zonal"+ Style.RESET_ALL)
@@ -265,7 +263,7 @@ def pipeline(file):
         print(f"\tCalculando predicciones")
         y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         temporal.parent.mkdir(parents=True, exist_ok=True)
-        print(f"\Guardando predicciones en archivo temporal", end="")
+        print(f"\tGuardando predicciones en archivo temporal", end="")
         with open(Path(cfg.paths.pipeline.temp) / 'a.pickle', 'wb') as handler:
             pickle.dump(y_pred_zmodel, handler)
             print(f"\t{OK}")
@@ -275,18 +273,33 @@ def pipeline(file):
     print(f"\tRealizando conversion de {y_pred_zmodel.shape} a ", end='')
     # debemos tomar la media de las salidas
     y_pred_zmodel_mean = np.zeros(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], y_pred_zmodel.shape[3])) 
+    y_t = np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2]))
+    y_hr =np.empty_like(y_t)
+    y_rain=np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], 8))
     for idx in range(y_pred_zmodel.shape[0]):
-        y_pred_zmodel_mean[idx, : ,0] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
-        y_pred_zmodel_mean[idx, : ,1] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
-        y_pred_zmodel_mean[idx, : ,2:] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
-    for idx in range(y_pred_zmodel_mean.shape[0]):
-        for idj in range(y_pred_zmodel_mean.shape[1]):
-            y_pred_zmodel_mean[idx, idj] = np.where(y_pred_zmodel_mean[idx, idj] < max(y_pred_zmodel_mean[idx, idj]), 1, 0)
-    y_pred_zmodel = y_pred_zmodel_mean.copy()  # (len(test), 72, 10)
-    del y_pred_zmodel_mean
-    print(f"{y_pred_zmodel.shape}", end="")
-    print(f"\t\t\t\t\t{OK}")
+        y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
+        y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
+        y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
     
+    y_t = np.expand_dims(y_t, axis=-1)
+    y_hr = np.expand_dims(y_hr, axis=-1)
+    for idx in range(y_rain.shape[0]):
+        for idj in range(y_rain.shape[1]):
+            y_rain[idx, idj] = np.where(y_rain[idx, idj] < max(y_rain[idx, idj]), 0, 1)
+    
+    y_pred_zmodel = np.concatenate([y_t,y_hr,y_rain], axis=-1)
+    #    y_pred_zmodel_mean[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
+    # for idx in range(y_pred_zmodel_mean.shape[0]):
+    #     for idj in range(y_pred_zmodel_mean.shape[1]):
+    #         y_pred_zmodel_mean[idx, idj] = np.where(y_pred_zmodel_mean[idx, idj] < max(y_pred_zmodel_mean[idx, idj]), 1, 0)
+    # y_pred_zmodel = y_pred_zmodel_mean.copy()  # (len(test), 72, 10)
+    # del y_pred_zmodel_mean
+    # print(f"{y_pred_zmodel.shape}", end="")
+    # print(f"\t\t\t\t\t{OK}")
+    print(f"{y_pred_zmodel.shape=}")
+    print(f"{y_t.shape=}")
+    print(f"{y_hr.shape=}")
+    print(f"{y_rain.shape=}")
     print(Fore.YELLOW + "Obteniendo valores reales y de prevision del conjunto de test desde el dataset de la estacion objetivo" + Style.RESET_ALL)
     # tambien necesitamos el y_real y y_nwp que estan en dataset_pmodel 
     kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets_pmodel, metadata=metadata_pmodel)
