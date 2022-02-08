@@ -49,9 +49,6 @@ class Escalador():
     
     def inverse_transform(self, X: np.ndarray) -> np.ndarray:
         """Desescala X según el patron MaxMin
-        X_std = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
-        X_scaled = X_std * (max - min) + min
-
         Args:
             X (np.ndarray): Array a convertir
 

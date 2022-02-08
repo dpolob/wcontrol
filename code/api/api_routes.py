@@ -58,18 +58,20 @@ import numpy as np
 # logger = logging.getLogger()
 from pathlib import Path
 from common.utils.trainers import trainerSeq2Seq as tr
+from common.utils.trainers import trainerpmodel as tr_pmodel
+from common.utils.scalers import Escalador
 
 class Prediccion(Resource):
        
     def get(self):
         token = "Token " + secrets.token_cesens
         now = datetime.datetime.now()
-        past = now - datetime.timedelta(days=367) 
+        past = now - datetime.timedelta(days=45) 
         
         ### PASADO
         try:
             dfs = api_modules.fetch_pasado(url=secrets.url_cesens, 
-                                                 token=token, 
+                                                 token=secrets.token_cesens, 
                                                  estaciones=secrets.estaciones_zona,
                                                  metricas=secrets.estaciones_metricas,
                                                  now=now,
@@ -83,7 +85,7 @@ class Prediccion(Resource):
 
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
-            return Response(f"Problemas en la conexion con Cesens. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+            return Response(f"Problemas en la conexion con Cesens. {e}", status=500, mimetype='text/plain') 
         ### FUTURO
         try:
             df_futuro = api_modules.fetch_futuro(url=secrets.url_nwp, 
@@ -94,122 +96,139 @@ class Prediccion(Resource):
                                                        escaladores=secrets.escaladores)
         except Exception as e:
             # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
-            return Response(f"Problemas en la conexion con NWP. {e, traceback.print_exc()}", status=500, mimetype='text/plain') 
+            return Response(f"Problemas en la conexion con NWP. {e}", status=500, mimetype='text/plain') 
         
         
-        ## MONTAR NUMPY
+        ## PREDICCION ZONAL
+        try:
+            
+            Xf, Yt, P = api_modules.fff(datasets=df_pasado,nwps=nwp, pasado=secrets.pasado, futuro=72, etiquetaF=secrets.Ff, etiquetaT=secrets.Ft, etiquetaP=secrets.Fnwp)
+                    
+            print(f"{Xf.shape=}")
+            print(f"{Yt.shape=}")
+            print(f"{P.shape=}")
+            
+            device = secrets.device
+            path_zmodel_checkpoints = secrets.path_zmodel_checkpoints
+            path_zmodel = secrets.path_zmodel
+            model = torch.load(Path(path_zmodel) , map_location='cpu')
+            model.to(device)
+
+            trainer = tr.TorchTrainer(model=model,
+                                    device=device,
+                                    checkpoint_folder= path_zmodel_checkpoints)
+            trainer._load_best_checkpoint()
+            y_pred = trainer.predict_one(Xf, Yt, P)
+
+            print(f"{y_pred.shape=}")
+            
         
-        Xf, Yt, P = api_modules.fff(datasets=df_pasado,nwps=nwp, pasado=secrets.pasado, futuro=72, etiquetaF=secrets.Ff, etiquetaT=secrets.Ft, etiquetaP=secrets.Fnwp)
-                
-        print(f"{Xf.shape=}")
-        print(f"{Yt.shape=}")
-        print(f"{P.shape=}")
+            # y_t = np.empty(shape=(y_pred.shape[1], 1))  # N,Ly,Fout -> (Ly,1)
+            # y_hr =np.empty_like(y_t)
+            # y_rain=np.empty(shape=(y_pred.shape[1], 8))
+            
+            y_t = torch.mean(y_pred[..., 0], dim=0)
+            y_hr = torch.mean(y_pred[..., 1], dim=0)
+            y_rain = torch.mean(y_pred[..., 2:], dim=0)
+            y_t = torch.unsqueeze(y_t, dim=-1)
+            y_hr = torch.unsqueeze(y_hr, dim=-1)
+            print(f"{y_t.shape=}")
+            print(f"{y_hr.shape=}")
+            print(f"{y_rain.shape=}")
+            y_pred_zmodel = torch.cat([y_t,y_hr,y_rain], dim=-1)
+            y_pred_zmodel = torch.unsqueeze(y_pred_zmodel, dim=0)
+            print(f"{y_pred_zmodel.shape=}")
+            
+            
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en la prediccion zonal. {e}", status=500, mimetype='text/plain') 
+            
+        ## ZMODELO TEMPERATURA
+        try:
+            device = secrets.device
+            path_temp_checkpoints = secrets.path_temp_checkpoints
+            path_temp_model = secrets.path_temp_model
+            model = torch.load(Path(path_temp_model) , map_location='cpu')
+            model.to(device)
+            
+            trainer = tr_pmodel.TorchTrainer(model=model,
+                                            device=device,
+                                            checkpoint_folder= path_temp_checkpoints)
+            trainer._load_best_checkpoint()
+            y_pred_temp = trainer.predict_one(torch.unsqueeze(y_pred_zmodel[...,0], dim=-1))
+            y_pred_temp = torch.squeeze(y_pred_temp)
+            print(f"{y_pred_temp.shape=}")
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en la prediccion temperatura. {e}", status=500, mimetype='text/plain')            
         
-        device = secrets.device
-        path_checkpoints = secrets.path_checkpoints
-        use_checkpoint = 'best'
-        path_model = secrets.zmodel
-        model = torch.load(Path(path_model) , map_location='cpu')
-        model.to(device)
+        try:
+            device = secrets.device
+            path_hr_checkpoints = secrets.path_hr_checkpoints
+            path_hr_model = secrets.path_hr_model
+            model = torch.load(Path(path_hr_model) , map_location='cpu')
+            model.to(device)
+            
+            trainer = tr_pmodel.TorchTrainer(model=model,
+                                            device=device,
+                                            checkpoint_folder= path_hr_checkpoints)
+            trainer._load_best_checkpoint()
+            y_pred_hr = trainer.predict_one(torch.unsqueeze(y_pred_zmodel[...,1], dim=-1))
+            y_pred_hr = torch.squeeze(y_pred_hr)
+            print(f"{y_pred_hr.shape=}")
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en la prediccion hr. {e}", status=500, mimetype='text/plain')    
 
-        trainer = tr.TorchTrainer(model=model,
-                                  device=device,
-                                  checkpoint_folder= path_checkpoints)
-        trainer._load_best_checkpoint()
-        y_pred = trainer.predict_one(Xf, Yt, P)
-
-        print(f"{y_pred[0].shape=}")
-
+        try:
+            device = secrets.device
+            path_precipitacion_checkpoints = secrets.path_precipitacion_checkpoints
+            path_precipitacion_model = secrets.path_precipitacion_model
+            model = torch.load(Path(path_precipitacion_model) , map_location='cpu')
+            model.to(device)
+            
+            trainer = tr_pmodel.TorchTrainer(model=model,
+                                            device=device,
+                                            checkpoint_folder= path_precipitacion_checkpoints)
+            trainer._load_best_checkpoint()
+            y_pred_precipitacion = trainer.predict_one(y_pred_zmodel[...,2:])
+            y_pred_precipitacion = torch.squeeze(y_pred_precipitacion)
+            print(f"{y_pred_precipitacion.shape=}")
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en la prediccion precipitacion. {e}", status=500, mimetype='text/plain') 
         
-        # N = len(df_pasado)
-        # Lx = secrets.pasado
-        # Ff = len(df_pasado[0])
-        # arrays = np.array()
-        # for df in df_pasado:
-        #     arrays.append(df.to_numpy())
+        ## DESESCALADO    
+        try:
+            y_t = y_pred_temp.cpu().numpy()
+            scaler = Escalador(Xmax=secrets.escaladores['temperatura']['max'],
+                               Xmin=secrets.escaladores['temperatura']['min'],
+                               min=0, max=1, auto_scale=False)
+            y_t = scaler.inverse_transform(y_t)
             
-        # X_f = np.concatenate(arrays)
+            y_hr = y_pred_hr.cpu().numpy()
+            scaler = Escalador(Xmax=secrets.escaladores['hr']['max'],
+                               Xmin=secrets.escaladores['hr']['min'],
+                               min=0, max=1, auto_scale=False)
+            y_hr = scaler.inverse_transform(y_hr)
             
-        return Response(f"OK", status=200, mimetype='text/plain') 
-                
-                
-        
-    # response_cesens_dict = json.loads(response_cesens.text)
-    # last_value = response_cesens_dict[list(response_cesens_dict)[len(response_cesens_dict) - 1]]
-
-    # # check if current date differs from last date read
-    # current_date = datetime.datetime.now()
-    # current_date_ts = time.mktime(current_date.timetuple())
-    # last_ts_read = int(list(response_cesens_dict)[len(response_cesens_dict) - 1])
-    # if (current_date_ts - last_ts_read) > 24*60*60:
-    #     save_errors.save_errors("WARNING: old data. More than one day")
-    #     result['updated'] = "NO"
-    # # calculations
-    # cc = field_capacity(parameters=parameters)
-    # pmp = wilting_point(parameters=parameters)
-    # valor = (last_value - pmp) * (150) / 10 * \
-    #     (1 - parameters['soil']['gross'] / 100) - (cc * (100 - parameters['water']['max']) / 100)
-
-    # # valor puede ser negativo
-    # if valor < 0:
-    #     valor = cc - valor
-
-    # # update parameters
-    # parameters['last_check'] = int(list(response_cesens_dict)[len(response_cesens_dict) - 1])
-    # save_parameters.save_parameters(parameters)
-
-    # current_date = datetime.datetime.now()
-    # current_date_ts = time.mktime(current_date.timetuple())
-
-    # # Randomize
-    # if parameters['randomize']:
-    #     valor = valor - random.randrange(int(valor))
-
-    # result[str(current_date_ts).split('.')[0]] = valor
-    # return ("OK", result)
+            y_rain = y_pred_precipitacion.cpu().numpy()
+            bins = np.array(secrets.bins)
+            y_rain = bins[np.argmax(y_rain, axis=-1)]
+            scaler = Escalador(Xmax=secrets.escaladores['precipitacion']['max'],
+                               Xmin=secrets.escaladores['precipitacion']['min'],
+                               min=0, max=1, auto_scale=False)
+            y_rain = scaler.inverse_transform(y_rain)
             
+        except Exception as e:
+            # logger.info(f"[Prediccion] No es posible conectar con Cesens. {e}")
+            return Response(f"Problemas en el desescalado. {e}", status=500, mimetype='text/plain')             
             
-            
-    #         db = TinyDB(globals.DATABASE)
-    #         data = request.get_json()
-    #         check_jsonkeys(data, 'Register')
-            
-    #         # Status: STARTED (requested for MMT), previously STOPPED
-    #         data['status'] = StatusEnum.STARTED
-
-    #         # add id a sequential number
-    #         table= db.table('algorithm_list')  # switch to table
-    #         list = table.all()
-
-    #         #store basicAuth if exist
-    #         user = request.args.get('user', default='entrypoint', type=str)
-    #         password = request.args.get('password', default='fakepass', type=str)
-    #         data['auth'] = {"user": user,
-    #                         "password": password}
-
-    #         data['id'] = randint(0,99999)
-
-    #         # check if url_web is provided if not provide default url_web
-    #         if 'urlweb' not in data.keys():
-    #             logger.info("[Register API] Url web not provided. Used: {}".format(globals.DEFAULT_URL_WEB))
-    #             data['urlweb'] = globals.DEFAULT_URL_WEB
-            
-    #         table= db.table('algorithm_list')  # switch to table
-
-    #         if table.insert(data) < 0:
-    #             raise errors.DBInsertionWrongException()
-    #         logger.info("[Register API] Insetion in data base correct")
-            
-    #         logger.info("[Register API] Registration successful. Algorithm name: {} Id: {} Code 200 sent".format(data['name'], data['id']))
-    #         return Response("Registration sucessful with id {}".format(data['id']), status=200, mimetype='text/plain')
-        
-    #     except (errors.DBInsertionWrongException):
-    #         logger.info("[Register API][DBInsertionWrongException] Failure in registration. Code 500 sent")
-    #         return Response("Registration failure", status=500, mimetype='text/plain')
-    #     except (jsonschema.exceptions.ValidationError, jsonschema.exceptions.SchemaError) as error:
-    #         logger.info('[Register API]Error in schemas validations {}'.format(error))
-    #         return Response("Error in schema validation {}".format(error.message), status=500, mimetype='text/plain')
-    #     except Exception as e:
-    #         logger.info("[Register API][UncaughtException] {}".format(e))
-    #         return Response("Registration failure. Check log", status=500, mimetype='text/plain')
-
+        return make_response(jsonify(dict({"timestamp": now.timestamp(),
+                                           "estacion": secrets.estacion,
+                                           "data": [
+                                               {"temp": y_t.tolist()},
+                                               {"hr": y_hr.tolist()},
+                                               {"rain": y_rain.tolist()}
+                                               ]})), 200)

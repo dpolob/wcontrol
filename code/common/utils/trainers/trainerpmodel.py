@@ -129,6 +129,11 @@ class TorchTrainer(BaseTrainer):
         if self.keep_best_checkpoint:
             self._keep_best_checkpoint()
             
-    def predict_one(self) -> Any:
-        return super().predict_one()
+    def predict_one(self, X):
+        self.model.eval()
+        with torch.no_grad():
+            X = X.to(self.device)
+            y_pred = self.model(X)
+        return y_pred
+
             

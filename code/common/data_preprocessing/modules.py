@@ -120,7 +120,7 @@ def check_variables_entrada(df: pd.DataFrame=None) -> bool:
     
     return False if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns else True
 
-def check_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: list=None) -> bool:
+def check_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: dict=None) -> bool:
     """Comprueba que no haya outliers en el dataset"""
 
     for metrica in metricas:

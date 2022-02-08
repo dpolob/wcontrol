@@ -164,7 +164,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
     fechas_maximas = []
     for i, estacion in enumerate(estaciones):
     
-        if estacion['fecha_maxima'] - estacion['fecha_minima'] < timedelta(days=366):
+        if estacion['fecha_maxima'] - estacion['fecha_minima'] < timedelta(days=30):
             print(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No tiene mas de un año de pasado")
             continue
         elif now - estacion['fecha_maxima'] > timedelta(hours=2):
@@ -306,9 +306,9 @@ def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     for precipitacion in precipitaciones:
         h = re.sub(r" mm", "", precipitacion)
         h = re.split(r"\n", h)[2]
-        futuro['precipitacion'].append(int(h))
+        futuro['precipitacion'].append(float(h))
     for _ in range(cuenta):
-        futuro['precipitacion'].append(int(h))
+        futuro['precipitacion'].append(float(h))
     
     return(pd.DataFrame(futuro))
 
@@ -322,20 +322,24 @@ def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: da
         data['longitud'] = datos['longitud']
         data['latitud'] = datos['latitud']
         data['nombre'] = datos['nombre']
-        
         fechas_parciales=[]
-        for metrica in metricas:
-            api_string = f"{url}/api/datos/{str(id)}/{str(metrica)}/{past.strftime('%Y%m%d')}-{now.strftime('%Y%m%d')}"
-            data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": token})
-            data[metrica] = [v for k, v in dict(json.loads(data_response_cesens.text)).items()]
-            fechas_parciales.append(max([datetime.fromtimestamp(int(k)) for k, v in dict(json.loads(data_response_cesens.text)).items()]))
+        try:
+            for metrica in metricas:
+                api_string = f"{url}/api/datos/{str(id)}/{str(metrica)}/{past.strftime('%Y%m%d')}-{now.strftime('%Y%m%d')}"
+                data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": f"Token {token}"})
+                data[metrica] = [v for k, v in dict(json.loads(data_response_cesens.text)).items()]
+                fechas_parciales.append(max([datetime.fromtimestamp(int(k)) for k, v in dict(json.loads(data_response_cesens.text)).items()]))
+        except:
+            print(f"[API][fetch_pasado] FAIL Estacion: {data['nombre']}")
+            continue
 
         data['fechas_parciales'] = fechas_parciales
         data['fecha'] = [datetime.fromtimestamp(int(k))
-                        for k, _ in dict(json.loads(data_response_cesens.text)).items()] ## str -> timestamp -> str
+                            for k, _ in dict(json.loads(data_response_cesens.text)).items()] ## str -> timestamp -> str
         data['fecha_maxima'] = max(data['fecha'])
         data['fecha_minima'] = min(data['fecha'])
-    
+        
+        
         dfs.append(data)
     return dfs
 
