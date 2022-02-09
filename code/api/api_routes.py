@@ -1,8 +1,7 @@
 import datetime
 import logging
 from flask_restful import Resource
-from importlib_metadata import metadata
-from flask import request, jsonify, make_response, Response
+from flask import jsonify, make_response, Response
 from api.env import secrets
 from api import api_modules
 

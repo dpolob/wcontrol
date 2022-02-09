@@ -2,13 +2,11 @@ import logging
 import pandas as pd
 import numpy as np
 
-from math import sqrt, sin, cos, atan2, pi
 from datetime import datetime
 from sklearn.preprocessing import OneHotEncoder
 
 from datetime import datetime, timedelta
-import common.utils.indicesbioclimaticos as bio
-from common.utils.otrosindicadores import macd
+
 from common.utils.scalers import Escalador
 
 from bs4 import BeautifulSoup
