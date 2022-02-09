@@ -1,6 +1,7 @@
 # dockerfile para prediccion
 FROM python:3.8.12-slim-buster
 COPY ./code /opt/wcontrol
+COPY ./requeriments.txt /opt/wcontrol/code
 COPY ./experiments/experimentoZP1/pmodel /opt/modelo-wc/pmodel
 COPY ./experiments/experimentoZP1/zmodel /opt/modelo-wc/zmodel
 
