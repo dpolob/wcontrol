@@ -1,43 +1,15 @@
-"""
-Diversas funciones para su uso dentro de la generacion de datasets tanto para zmodel y pmodel
-
-Comun:
-- distanciasCdG(latitudes: list, longitudes: list, altitudes: list) -> tuple
-- haversine(lat1: float, long1: float, lat2: float, long2: float) -> float
-- parser_experiment(cfg: dict, name: str) -> dict
-- temporales(column_date: pd.Series) -> tuple
-
-Zmodel:
-- generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outliers: list=None) -> tuple
-
-Pmodel:
-- extraccionFuturo(df: pd.DataFrame, k: int=30 ) -> np.array
-"""
-
-
+import logging
 import pandas as pd
 import numpy as np
-import yaml
-import pickle
-from pathlib import Path
-from tqdm import tqdm
-from colorama import Fore, Back, Style
+
 from math import sqrt, sin, cos, atan2, pi
 from datetime import datetime
-from sklearn.impute import KNNImputer
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-import common.predict.modules as predictor
-import common.utils.parser as parser
-from sklearn.preprocessing import PowerTransformer
 from sklearn.preprocessing import OneHotEncoder
 
 from datetime import datetime, timedelta
 import common.utils.indicesbioclimaticos as bio
 from common.utils.otrosindicadores import macd
 from common.utils.scalers import Escalador
-from attrdict import AttrDict
-from common.utils import errors
 
 from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
@@ -47,15 +19,11 @@ import requests
 import json
 from typing import List
 
-
 import numpy as np
 import pandas as pd
 import torch
 
-from torch.utils.data.sampler import Sampler
-from torch.utils.data import Dataset
-    
-
+logger = logging.getLogger(__name__)
 
 def no_NaNs(df: pd.DataFrame=None) -> bool:
     """ Chequea si un dataframe tiene NaNs"""
@@ -158,23 +126,23 @@ def recortar(df: pd.DataFrame, fecha_maxima: datetime, pasado: int):
     df = df.loc[df.index <= fecha_maxima, :]
     return df.iloc[len(df) - pasado:len(df), :]
     
-def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now: datetime, escaladores: dict, cdg: list) -> tuple:
+def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now: datetime, escaladores: dict, cdg: list) -> List[pd.DataFrame]:
    
     estaciones_def = []
     fechas_maximas = []
     for i, estacion in enumerate(estaciones):
     
         if estacion['fecha_maxima'] - estacion['fecha_minima'] < timedelta(days=30):
-            print(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No tiene mas de un año de pasado")
+            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No tiene mas de un año de pasado")
             continue
         elif now - estacion['fecha_maxima'] > timedelta(hours=2):
-            print(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Su ultimo envio es posterior a 2 horas")
+            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Su ultimo envio es posterior a 2 horas")
             continue
         elif len(estacion[1]) != len(estacion[6]) or len(estacion[11]) != len(estacion[6]):
-            print(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Las medidas de la estacion no estan sincronizadas")
+            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Las medidas de la estacion no estan sincronizadas")
             continue
         elif len(set(estacion['fechas_parciales']))!=1:  # No hay sincronismo
-            print(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No hay sincronismo. Fechas máximas no coinciden")
+            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No hay sincronismo. Fechas máximas no coinciden")
             continue
         else:
             estaciones_def.append(estacion)
@@ -196,7 +164,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
         df = df.resample('1H').interpolate()
 
         if df.isna().sum().sum() > 0:
-            print(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en los datos")
+            logger.debug(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en los datos")
             df = quitar_nans(df)
        
         var_bio, df = variables_bioclimaticas(df)
@@ -206,7 +174,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
 
         var_macd, df = variables_macd(df)
         if df.isna().sum().sum() > 0:
-            print(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en macd")
+            logger.debug(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en macd")
             df = quitar_nans(df)
             
         df = recortar(df, fecha_maxima, pasado)
@@ -234,7 +202,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
         for df in dfs:
             df[metrica] = scaler.transform(np.array(df[metrica].values))
             if not no_NaNs(df):
-                print(f"[API][generar_variables] FAIL Estacion:  Hay Nans! en el escalador")
+                logger.error(f"[API][generar_variables] FAIL Estacion:  Hay Nans! en el escalador")
                 raise Exception(f"[API][generar_variables] FAIL Estacion:  Hay Nans! en el escalador")
 
     bins = [0.0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 1.0]
@@ -252,18 +220,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
         if not no_NaNs(df):
             print(f"[API][generar_variables] FAIL Estacion:  Hay Nans! en el clasificador")
             raise Exception(f"[API][generar_variables] FAIL Estacion: Hay Nans! en el clasificador")
-                         
-    metadata = {}
-    metadata["longitud"] = len(dfs)
-    metadata["datasets"] = {}
-    metadata["CdG"] = [float(_) for _ in list(cdg)]
-    metadata['fecha_max'] = datetime.strftime(fecha_maxima, format="%Y-%m-%d %H:%M:%S")
-    metadata['indice_min'] = min([_.index.min() for _ in dfs])
-    metadata['indice_max'] = max([_.index.max() for _ in dfs])
-    metadata['escaladores'] = {}
-    metadata['escaladores'] = parametros
-    metadata['bins'] = bins
-    return (dfs, metadata)
+    return dfs
 
 def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     futuro = {"fecha": [], "temperatura": [], "hr": [], "precipitacion": []}
@@ -310,7 +267,7 @@ def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     for _ in range(cuenta):
         futuro['precipitacion'].append(float(h))
     
-    return(pd.DataFrame(futuro))
+    return pd.DataFrame(futuro)
 
 def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: datetime, past:datetime) -> List[pd.DataFrame]:
     dfs = []
@@ -326,11 +283,11 @@ def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: da
         try:
             for metrica in metricas:
                 api_string = f"{url}/api/datos/{str(id)}/{str(metrica)}/{past.strftime('%Y%m%d')}-{now.strftime('%Y%m%d')}"
-                data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": f"Token {token}"})
+                data_response_cesens = requests.get(api_string, headers={"Content-Type": "application/json", "Authentication": f"{token}"})
                 data[metrica] = [v for k, v in dict(json.loads(data_response_cesens.text)).items()]
                 fechas_parciales.append(max([datetime.fromtimestamp(int(k)) for k, v in dict(json.loads(data_response_cesens.text)).items()]))
         except:
-            print(f"[API][fetch_pasado] FAIL Estacion: {data['nombre']}")
+            logger.debug(f"[API][fetch_pasado] FAIL Estacion: {data['nombre']}")
             continue
 
         data['fechas_parciales'] = fechas_parciales
@@ -353,7 +310,7 @@ def generar_variables_futuro(nwp: pd.DataFrame, escaladores: dict, estaciones: l
         scaler = Escalador(Xmax=escaladores[metrica]['max'], Xmin=escaladores[metrica]['min'], min=0, max=1, auto_scale=False)
         nwp[metrica] = scaler.transform(np.array(nwp[metrica].values))
         if not no_NaNs(nwp):
-            print(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el escalador")
+            logger.error(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el escalador")
             raise Exception(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el escalador")
             
     nwp.rename(columns = {'temperatura': 'nwp_temperatura'}, inplace = True)
@@ -371,27 +328,21 @@ def generar_variables_futuro(nwp: pd.DataFrame, escaladores: dict, estaciones: l
     for _ in range(len(bins)):
         nwp['nwp_clase_precipitacion_' + str(_)] = df_aux1['nwp_clase_precipitacion_' + str(_)].values
     if not no_NaNs(nwp):
-        print(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el clasificador")
+        logger.error(f"[API][generar_variables_futuro] FAIL Estacion: NWP Hay Nans! en el clasificador")
         raise Exception(f"[API][generar_variables] FAIL Estacion: NWP Hay Nans! en el clasificador")
     
     nwp.reset_index(drop=True, inplace=True)
     
-
     for estacion in estaciones:
         distancia = estacion.loc[0, 'distancia']
         altitud = estacion.loc[0, 'altitud']
-        
         nwp['distancia'] = distancia
         nwp['altitud'] = altitud
         dfs.append(nwp.copy())    
     
     return dfs
 
-
-
-
- 
-def fff(datasets: list, nwps: pd.DataFrame, pasado: int, futuro: int, etiquetaF: list=None, etiquetaT: list=None, etiquetaP: list=None) -> tuple:
+def cargador_datos(datasets: list, nwps: pd.DataFrame, pasado: int, futuro: int, etiquetaF: list=None, etiquetaT: list=None, etiquetaP: list=None) -> tuple:
         
     batches = len(datasets)
     X_f = np.empty(shape=(batches, # batches
@@ -410,8 +361,6 @@ def fff(datasets: list, nwps: pd.DataFrame, pasado: int, futuro: int, etiquetaF:
         P[i] = nwp.loc[:, etiquetaP].values
     
     return (torch.from_numpy(X_f).float(),  # (batches, Lx + 1, Ff)
-
                 torch.from_numpy(Y_t).float(),  # (batches, Ly + 1, Ft)
-
                 torch.from_numpy(P).float())  # (batches, Ly + 1, Fnwp)
     
