@@ -164,6 +164,7 @@ def objective(trial):
                               )
 
     start_epoch = 0
+    mean_loss_value = []
     for i_epoch in range(start_epoch, start_epoch + EPOCHS):
         model.train()
         #train_bar = tqdm(train_dataloader)
@@ -180,11 +181,14 @@ def objective(trial):
                 # valid_bar.set_description(f"V_Loss: {loss_value}")        
         print(f"V_Loss {i_epoch}: {loss_value}")
         loss_value = np.mean(loss_values)
+        mean_loss_value.append(loss_value)
+        print(f"V_Loss {i_epoch}: {loss_value}. Min_Epoch: {np.argmin(mean_loss_value)} Min_V_Loss: {np.min(mean_loss_value)}")
                     
-        trial.report(loss_value, i_epoch)
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
-    return loss_value
+    trial.report(np.min(mean_loss_value), i_epoch)
+
+    if trial.should_prune():
+        raise optuna.exceptions.TrialPruned()
+    return np.min(mean_loss_value)
 
 def objectivepmodel(trial):
     global archivo; global mtemp; global mhr; global mrain 
@@ -192,7 +196,7 @@ def objectivepmodel(trial):
     n_layers = trial.suggest_int('n_layers', 1, 5)
     hidden_size = trial.suggest_discrete_uniform('hidden_size', 50, 200, 25)
     gru_n_layers = trial.suggest_int('gru_n_layers', 1, 3)
-    model_optimizer_name = trial.suggest_categorical("loss_function", ["Adam", "AdamW", "RMSprop", "Adamax"])
+    model_optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "AdamW", "RMSprop", "Adamax"])
     lr = trial.suggest_float("lr", 0.001, 0.1, log=True)
   
   
@@ -221,7 +225,7 @@ def objectivepmodel(trial):
     
     def entrenador_optimo(Fin: int, Fout: int, componente: slice, kwargs_loss: dict, cfg=cfg, rain=False):
 
-        EPOCHS = 25
+        EPOCHS = 15
         TRAIN = cfg.zmodel.dataloaders.train.enable
         VALIDATION = cfg.zmodel.dataloaders.validation.enable
         shuffle = True if 'shuffle' not in cfg.pmodel.dataloaders.train.keys() else cfg.pmodel.dataloaders.train.shuffle
@@ -245,9 +249,10 @@ def objectivepmodel(trial):
         loss_fn = lf.LossFunction(**kwargs_loss)
         model_optimizer = getattr(optim, model_optimizer_name)(model.parameters(), lr=lr, weight_decay=lr / 10)
         
-        trainer = tr_pmodel.TorchTrainer(name=name, model=model, optimizer=model_optimizer, loss_fn=loss_fn, device=device, rain=rain)
+        trainer = tr_pmodel.TorchTrainer(name=name, model=model, optimizer=model_optimizer, loss_fn=loss_fn, device=device, rain=rain, early_stop=5)
 
         start_epoch = 0
+        mean_loss_value = []
         for i_epoch in range(start_epoch, start_epoch + EPOCHS):
             model.train()
 
@@ -261,12 +266,15 @@ def objectivepmodel(trial):
                 loss_value = trainer._loss_batch(X, Y, optimize=False, rain=rain)
                 loss_values.append(loss_value)
             loss_value = np.mean(loss_values)
-            print(f"V_Loss {i_epoch}: {loss_value}")
+            mean_loss_value.append(loss_value)
+            
+            print(f"V_Loss {i_epoch}: {loss_value}. Min_Epoch: {np.argmin(mean_loss_value)} Min_V_Loss: {np.min(mean_loss_value)}")
                     
-        trial.report(loss_value, i_epoch)
+        trial.report(np.min(mean_loss_value), i_epoch)
+        
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
-        return loss_value
+        return np.min(mean_loss_value)
     
     if mtemp:
         return entrenador_optimo(Fin=1, Fout=1, componente=slice(0, 1), kwargs_loss=cfg.pmodel.model.temperatura.loss_function)
@@ -283,14 +291,15 @@ def main():
 
 @main.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
-def zmodel(file):
+@click.option('--trials', type=click.INT, help='Numero de trials por proceso', default=20)
+def zmodel(file, trials):
     global archivo 
     archivo = file
     study_name = "zmodel"  # Unique identifier of the study.
     storage_name = "sqlite:///{}.db".format(study_name)
     #storage_name = "mysql://root:root@127.0.0.1:3306/prueba"
     study = optuna.create_study(study_name=study_name, storage=storage_name, direction="minimize", load_if_exists=True)
-    study.optimize(objective, n_trials=50)
+    study.optimize(objective, n_trials=trials)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
@@ -314,7 +323,8 @@ def zmodel(file):
 @click.option('--temp', is_flag=True, default= False, help='Entrenar modelo de temperatura')
 @click.option('--hr', is_flag=True, default= False, help='Entrenar modelo de HR')
 @click.option('--rain', is_flag=True, default= False, help='Entrenar modelo de precipitacion')
-def pmodel(file, temp, hr, rain):
+@click.option('--trials', type=click.INT, help='Numero de trials por proceso', default=20)
+def pmodel(file, temp, hr, rain, trials):
     global archivo; global mtemp; global mhr; global mrain 
     archivo = file
     
@@ -323,7 +333,7 @@ def pmodel(file, temp, hr, rain):
         storage_name = "sqlite:///{}.db".format(study_name)
         #storage_name = "mysql://root:root@127.0.0.1:3306/prueba"
         study = optuna.create_study(study_name=study_name, storage=storage_name, direction="minimize", load_if_exists=True)
-        study.optimize(objectivepmodel, n_trials=20)  # son trail por proceso, no trails totales
+        study.optimize(objectivepmodel, n_trials=trials)  # son trail por proceso, no trails totales
 
         pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
         complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

@@ -1,0 +1,11 @@
+version: '3'
+services:
+  prediccion:
+    container_name: prediccion_villaverde
+    build:
+      dockerfile: dockerfile
+      context: .
+    environment:
+      - PREDICTION_PORT=5100
+    ports:
+      - '5012:5100'

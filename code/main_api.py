@@ -5,15 +5,12 @@ import logging
 from flask import Flask
 from flask_restful import Api
 
-from api.env import secrets
 from api import api_routes
 
-from pathlib import Path
 #  compatibility with flask run as api_classes is not in the same directory
 #  as /flask/cly.py
 cwd = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(cwd)
-
 
 # Configuracion del logger
 root = logging.getLogger()
@@ -30,6 +27,9 @@ app = Flask(__name__)
 api = Api(app, prefix='/')
 api.add_resource(api_routes.Prediccion, '/prediccion')
 
+port=  os.environ.get('PREDICTION_PORT')
+if port is None:
+    port = 9001
 ## TO RUN FROM FLASH: python3 main.py
-app.run(host='0.0.0.0', port=secrets.PORT, debug=secrets.DEBUG)
+app.run(host='0.0.0.0', port=port, debug=True)
 ## TO RUN WITH GUNICORN: gunicorn --bind 0.0.0.0:5000 main:app

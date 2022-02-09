@@ -224,8 +224,8 @@ zmodel:
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      # fecha_fin: "2021-07-31 23:00:00"
-      fecha_fin: "2021-04-03 23:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
+      # fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
     visualizacion:
@@ -297,13 +297,15 @@ pmodel:
         coefs: None
         weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
         #[1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]
-      lr: 0.001971576126654154  # optuna
+      lr: 0.005821622396546932  # optuna
       gru_n_layers: 2  # optuna
-      hidden_size: 50  # optuna
+      hidden_size: 125  # optuna
       hidden_layers:
-        0: 219
-        1: 89
-      optimizer_name: "AdamW"  # optuna
+        0: 188
+        1: 173
+        2: 104
+        3: 84
+      optimizer_name: "RMSprop"  # optuna
   dataloaders:
     train:
       enable: True
@@ -319,8 +321,8 @@ pmodel:
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      # fecha_fin: "2021-07-31 23:00:00"
-      fecha_fin: "2021-04-03 23:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
+      #fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
     muestras: "range" # random, all, list, range

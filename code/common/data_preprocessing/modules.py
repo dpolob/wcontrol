@@ -1,43 +1,17 @@
-"""
-Diversas funciones para su uso dentro de la generacion de datasets tanto para zmodel y pmodel
-
-Comun:
-- distanciasCdG(latitudes: list, longitudes: list, altitudes: list) -> tuple
-- haversine(lat1: float, long1: float, lat2: float, long2: float) -> float
-- parser_experiment(cfg: dict, name: str) -> dict
-- temporales(column_date: pd.Series) -> tuple
-
-Zmodel:
-- generarvariablesZmodel(estaciones: list=None, escaladores: list=None, outliers: list=None) -> tuple
-
-Pmodel:
-- extraccionFuturo(df: pd.DataFrame, k: int=30 ) -> np.array
-"""
-
-
 import pandas as pd
 import numpy as np
-import yaml
-import pickle
+import common.utils.indicesbioclimaticos as bio
+
 from pathlib import Path
 from tqdm import tqdm
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 from math import sqrt, sin, cos, atan2, pi
 from datetime import datetime
-from sklearn.impute import KNNImputer
-from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
-import common.predict.modules as predictor
-import common.utils.parser as parser
-from sklearn.preprocessing import PowerTransformer
 from sklearn.preprocessing import OneHotEncoder
-
-from datetime import datetime, timedelta
-import common.utils.indicesbioclimaticos as bio
+from datetime import datetime
 from common.utils.otrosindicadores import macd
 from common.utils.scalers import Escalador
-from attrdict import AttrDict
-from common.utils import errors
 
 OK = "\t[ " + Fore.GREEN +"OK" + Style.RESET_ALL + " ]"
 FAIL = "\t[ " + Fore.RED + "FAIL" + Style.RESET_ALL + " ]"
