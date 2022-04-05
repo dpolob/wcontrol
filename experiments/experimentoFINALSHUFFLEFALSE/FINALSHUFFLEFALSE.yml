@@ -295,9 +295,10 @@ pmodel:
       early_stop: 5
       epochs: 25
       loss_function:
-        loss_fn: L1
+        loss_fn: CrossEntropyLoss
         reduction: mean
         coefs: None
+        weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
       lr: 0.001971576126654154  # optuna
       gru_n_layers: 2  # optuna
       hidden_size: 50  # optuna
