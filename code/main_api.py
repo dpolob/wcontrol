@@ -14,7 +14,7 @@ sys.path.append(cwd)
 
 # Configuracion del logger
 root = logging.getLogger()
-root.setLevel(logging.DEBUG)
+root.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,9 +27,10 @@ app = Flask(__name__)
 api = Api(app, prefix='/')
 api.add_resource(api_routes.Prediccion, '/prediccion')
 
-port=  os.environ.get('PREDICTION_PORT')
+port = os.environ.get('PREDICTION_PORT')
 if port is None:
     port = 9001
+   
 ## TO RUN FROM FLASH: python3 main.py
 app.run(host='0.0.0.0', port=port, debug=True)
 ## TO RUN WITH GUNICORN: gunicorn --bind 0.0.0.0:5000 main:app

@@ -6,7 +6,7 @@ COPY ./experiments/experimentoZP1/pmodel /opt/modelo-wc/pmodel
 COPY ./experiments/experimentoZP1/zmodel /opt/modelo-wc/zmodel
 
 RUN apt-get update
-RUN apt-get install -y git
+#RUN apt-get install -y git
 RUN apt-get install -y vim
 
 WORKDIR /opt/wcontrol

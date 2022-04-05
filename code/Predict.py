@@ -35,20 +35,25 @@ def main():
 @main.command()                                           
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def zmodel(file):
+    print(Fore.BLUE + "PREDICCION MODELO ZONAL" + Style.RESET_ALL)
+    print(Fore.YELLOW + "Cargando archivos de configuracion y datos" + Style.RESET_ALL)
 
     try:
+        print(f"\tArchivo de configuracion {file}", end="")
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
             name = cfg["experiment"]
             epoch = cfg["zmodel"]["dataloaders"]["test"]["use_checkpoint"]
             cfg = AttrDict(parser(name, epoch)(cfg))
-        print(f"Usando {file} como archivo de configuracion")
+            print(f"\t\t\t\t\t\t{OK}")
+        print(f"\tDatos de estaciones de zona {Path(cfg.paths.zmodel.dataset)}", end="")    
         with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
             datasets = pickle.load(handler)
-        print(f"Usando {cfg.paths.zmodel.dataset} como archivo de datos procesados de estaciones")
+            print(f"\t\t\t\t{OK}")
+        print(f"\tMetadatos de estaciones de zona {Path(cfg.paths.zmodel.dataset_metadata)}", end="")
         with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
             metadata = yaml.safe_load(handler)
-        print("Leidos metadatos del dataset")
+            print(f"\t\t\t\t{OK}")
     except Exception as e:
         print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.zmodel.dataset} \
             con los datasets para el modelo zonal o {cfg.paths.zmodel.dataset_metadata} de metadatos del dataset del \
@@ -59,30 +64,34 @@ def zmodel(file):
         print("El archivo no tiene definido dataset para test")
         exit()
     
-    print(f"Inicio del dataset en {metadata['fecha_min']}")
+    print(Fore.YELLOW + "Generando datos de prediccion " + Style.RESET_ALL)
+    print(f"\tInicio del dataset en {metadata['fecha_min']}")
     kwargs_dataloader = generar_kwargs.dataloader(modelo='zmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
     kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
  
     test_dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-    y_pred = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+    ### INVERTIR COMENTARIOS PARA DEPURACION 
+    y_pred = predictor.predict(test_dataloader, **kwargs_prediccion)  # Si y_pred tiene N variables su shape es (len(test)), si no es (len(test), N, Ly, Fout)
+    # with open('y_predzmodelpred.pickle', 'rb') as h:
+    #    y_pred = pickle.load(h)
+
     y_real = np.empty_like(y_pred)
-    assert y_pred.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
-    assert y_pred.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
-    assert y_pred.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
-    y_nwp = np.empty_like(y_pred)
-    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):
+    y_nwp = np.empty_like(y_real)
+    
+    print(f"\tGenerando target para test", end='')
+    for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader, leave=False)):
         # hay que quitarles la componente 0 y pasarlos a numpy
-        y_real[i, ...] = Y[:, 1:, :].numpy()
+        y_real[i,...] = Y[:, 1:, :].numpy()
         y_nwp[i, ...] = P[:, 1:, :].numpy()
-        
+    print(f"\t\t\t\t{OK}")
     predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
    
     output = Path(cfg.paths.zmodel.predictions)
     output.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Usando {output} como ruta para guardar predicciones")
+    print(f"\tUsando {output} como ruta para guardar predicciones")
     with open(output, 'wb') as handler:
         pickle.dump(predicciones, handler)
-    print(f"Salvando archivo de predicciones en {output}")
+    print(f"\tSalvando archivo de predicciones en {output}\t\t{OK}")
 
 @main.command()                                           
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
@@ -90,17 +99,32 @@ def zmodel(file):
 @click.option('--hr', is_flag=True, default= False, help='Predecir modelo de HR')
 @click.option('--rain', is_flag=True, default= False, help='Predecir modelo de precipitacion')
 def pmodel(file, temp, hr, rain):
-    
+    print(Fore.BLUE + "PREDICCION MODELO DE PARCELA" + Style.RESET_ALL)
+    print(Fore.YELLOW + "Cargando archivos de configuracion y datos" + Style.RESET_ALL)
     try:
+        print(f"\tArchivo de configuracion {file}", end="")
         with open(file, 'r') as handler:
             cfg = yaml.safe_load(handler)
             name = cfg["experiment"]
             epoch = cfg["pmodel"]["dataloaders"]["test"]["use_checkpoint"]
-            cfg = AttrDict(parser(name, epoch)(cfg))    
+            cfg = AttrDict(parser(name, epoch)(cfg))
+            print(f"\t\t\t\t\t\t{OK}")
+        print(f"\tDatos de la estacion objetivo {Path(cfg.paths.pmodel.dataset)}", end="")    
         with open(Path(cfg.paths.pmodel.dataset), 'rb') as handler:
             datasets = pickle.load(handler)
+            print(f"\t\t\t\t\t\t{OK}")
+        print(f"\tMetadatos de la estacion objetivo {Path(cfg.paths.pmodel.dataset_metadata)}", end="")
         with open(Path(cfg.paths.pmodel.dataset_metadata), 'r') as handler:
             metadata = yaml.safe_load(handler)
+            print(f"\t\t\t\t\t\t{OK}")
+        print(f"\tMetadatos de estaciones de zona {Path(cfg.paths.zmodel.dataset_metadata)}", end="")
+        with open(Path(cfg.paths.zmodel.dataset_metadata), 'r') as handler:
+            metadata_zmodel = yaml.safe_load(handler)
+            print(f"\t{OK}")
+        print(f"\tDatos de estaciones de zona {Path(cfg.paths.zmodel.dataset)}", end="")    
+        with open(Path(cfg.paths.zmodel.dataset), 'rb') as handler:
+            dataset_zmodel = pickle.load(handler)
+            print(f"\t{OK}")
     except Exception as e:
         print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pmodel.dataset} \
             con el dataset para el modelo de parcela o {cfg.paths.pmodel.dataset_metadata} de metadatos del dataset del \
@@ -110,25 +134,64 @@ def pmodel(file, temp, hr, rain):
     
     device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
     Fout = len(cfg.prediccion)
+    print(Fore.YELLOW + f"CUDA: {'SI' if device == 'cuda' else 'NO'}" + Style.RESET_ALL)
     
     ## Generar Dataset de test para acelerar el proceso de prediccion
-    print("Generando datos temporales para acelerar el proceso de predicion")
-    try:
+    print(Fore.YELLOW + "Cargando datos temporales para acelerar el proceso de predicion" + Style.RESET_ALL, end='')
+    if Path(cfg.paths.pmodel.pmodel_test).is_file():
         test_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_test), "rb"))
-        print(f"\tYa existen los datos temporales... Cargango datos de test desde el modelo pmodel desde {cfg.paths.pmodel.pmodel_test}")
-    except (OSError, IOError) as e:
-        print(f"\tGenerando datos de test...")
+        print(f"\t\t\t\t\t\t{OK}")
+    else:
+        print(f"\t\t\t\t\t\t{FAIL}")
+        print(Fore.YELLOW + "Generando datos de prediccion " + Style.RESET_ALL)
+        Path(cfg.paths.pmodel.pmodel_test).parent.mkdir(parents=True, exist_ok=True)
+        kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=dataset_zmodel, metadata=metadata_zmodel)
+        dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
+        kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
+        y_pred_zmodel = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+        print(f"\tRealizando conversion de {y_pred_zmodel.shape} a ", end='')
+        # debemos tomar la media de las salidas
+        y_t = np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro))
+        y_hr =np.empty_like(y_t)
+        y_rain=np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro, 8))
+        if y_pred_zmodel.ndim == 1:  # el vector y_pred_zmodel tiene un shape de (len(test))
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx][..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx][..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx][..., 2:], axis=0)
+        else:  # el vector y_pred_zmodel tiene un shape de (len(test), N, Ly, Fout)        
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
+        
+        y_t = np.expand_dims(y_t, axis=-1)
+        y_hr = np.expand_dims(y_hr, axis=-1)
+        for idx in range(y_rain.shape[0]):
+            for idj in range(y_rain.shape[1]):
+                y_rain[idx, idj] = np.where(y_rain[idx, idj] < max(y_rain[idx, idj]), 0, 1)
+        y_rain.astype(int)
+        y_pred_zmodel = np.concatenate([y_t,y_hr,y_rain], axis=-1)
+    
+        print(f"\t {y_pred_zmodel.shape}", end='')
+        print(f"\t{OK}")
+                
+        print(f"\tGenerando target para test")
+        y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-        y_real = np.empty((len(dataloader), cfg.futuro, Fout))
-        x_nwp = np.empty_like(y_real)
-        for i, (_, _, _, Y, P) in enumerate(tqdm(dataloader)):
+        for i, (_, _, _, Y, _) in enumerate(tqdm(dataloader, leave=False)):
             # hay que quitarles la componente 0 y pasarlos a numpy porque son tensores
             y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
-            x_nwp[i, ...] = P[:, 1:, :].numpy()  # pred_nwp = (len(dataset), Ly, Fout)
-        test_dataset = [x_nwp, y_real]
+        print(f"\t{OK}")
+        
+        test_dataset = [y_pred_zmodel, y_real]
+        print(f"\tGuardando datos en archivo temporal", end="")
         with open(Path(cfg.paths.pmodel.pmodel_test), 'wb') as handler:
             pickle.dump(test_dataset, handler)
+        print(f"\t{OK}")
+    
+    
     
     cfg_previo = copy.deepcopy(dict(cfg))
     if not temp and not hr and not rain:
@@ -136,7 +199,7 @@ def pmodel(file, temp, hr, rain):
         exit()
     if temp:
         ## Parte especifica temperatura
-        print("Prediccion modelo de temperatura...")
+        print(Fore.YELLOW + "Prediccion modelo de temperatura..." + Style.RESET_ALL)
         cfg = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
         test_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=test_dataset, componentes=slice(0, 1)),
                                         sampler=sa_pmodel.PModelSampler(datasets=test_dataset, batch_size=1, shuffle=False),    
@@ -145,11 +208,11 @@ def pmodel(file, temp, hr, rain):
        
         print(f"\tDataset de test: {len(test_dataloader)}", end='')
         kwargs_prediccion = generar_kwargs.predict(modelo='pmodel', cfg=cfg)
-        y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
-        y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
+        y_pred = predictor.predict(test_dataloader, tipo='pmodel', **kwargs_prediccion)  # y_pred = (len(test), 1, Ly, Fout)
+        y_pred = y_pred.squeeze(axis=1)  # (len(test), 1, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
         y_nwp = np.empty_like(y_pred)
-        for i, (X, Y) in enumerate(tqdm(test_dataloader)):
+        for i, (X, Y) in enumerate(tqdm(test_dataloader, leave=False)):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
@@ -163,7 +226,7 @@ def pmodel(file, temp, hr, rain):
 
     if hr:
         ## Parte especifica temperatura
-        print("Prediccion modelo de humedad...")
+        print(Fore.YELLOW + "Prediccion modelo de humedad..." + Style.RESET_ALL)
         cfg = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
         test_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=test_dataset, componentes=slice(1, 2)),
                                         sampler=sa_pmodel.PModelSampler(datasets=test_dataset, batch_size=1, shuffle=False),    
@@ -176,7 +239,7 @@ def pmodel(file, temp, hr, rain):
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
         y_nwp = np.empty_like(y_pred)
-        for i, (X, Y) in enumerate(tqdm(test_dataloader)):
+        for i, (X, Y) in enumerate(tqdm(test_dataloader, leave=False)):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
@@ -190,7 +253,7 @@ def pmodel(file, temp, hr, rain):
         
     if rain:
         ## Parte especifica temperatura
-        print("Prediccion modelo de precipitacion...")
+        print(Fore.YELLOW + "Prediccion modelo de precipitacion..." + Style.RESET_ALL)
         cfg = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
         test_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=test_dataset, componentes=slice(2, 2 + len(metadata["bins"]))),
                                         sampler=sa_pmodel.PModelSampler(datasets=test_dataset, batch_size=1, shuffle=False),    
@@ -203,7 +266,7 @@ def pmodel(file, temp, hr, rain):
         y_pred = y_pred.squeeze(axis=1)  # (len(test), N, Ly, Fout).squeeze(axis=1) -> (len(test), Ly, Fout)
         y_real = np.empty_like(y_pred)
         y_nwp = np.empty_like(y_pred)
-        for i, (X, Y) in enumerate(tqdm(test_dataloader)):
+        for i, (X, Y) in enumerate(tqdm(test_dataloader, leave=False)):
             y_real[i, ...] = Y[0, :, :].numpy()
             y_nwp[i,...] = X[0, :, :].numpy()
         predicciones = {'y_pred': y_pred, 'y_real': y_real, 'y_nwp': y_nwp}
@@ -218,6 +281,7 @@ def pmodel(file, temp, hr, rain):
 @main.command()                                           
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
 def pipeline(file):
+    print(Fore.BLUE + "PREDICCION PIPELINE" + Style.RESET_ALL)
     print(Fore.YELLOW + "Cargando archivos de configuracion y datos" + Style.RESET_ALL)
     try:
         print(f"\tArchivo de configuracion {file}", end="")
@@ -261,26 +325,30 @@ def pipeline(file):
         print(f"\t\t\t\t\t{OK}")
     else:
         print(f"\tCalculando predicciones")
-        y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+        y_pred_zmodel = predictor.predict(test_dataloader, **kwargs_prediccion)  # y_pred puede ser (len(test)) o (len(test), N, Ly, Fout)
         temporal.parent.mkdir(parents=True, exist_ok=True)
         print(f"\tGuardando predicciones en archivo temporal", end="")
         with open(Path(cfg.paths.pipeline.temp) / 'a.pickle', 'wb') as handler:
             pickle.dump(y_pred_zmodel, handler)
             print(f"\t{OK}")
-    assert y_pred_zmodel.shape[0]==len(test_dataloader), "Revisar y_pred y_pred.shape[0]!!!"
-    assert y_pred_zmodel.shape[3]==len(list(cfg.prediccion)), "Revisar y_pred.shape[3]!!!"
-    assert y_pred_zmodel.shape[2]==cfg.futuro, "Revisar y_pred.shape[2]!!!"
+   
+   
+   
     print(f"\tRealizando conversion de {y_pred_zmodel.shape} a ", end='')
     # debemos tomar la media de las salidas
-    y_pred_zmodel_mean = np.zeros(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], y_pred_zmodel.shape[3])) 
-    y_t = np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2]))
+    y_t = np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro))
     y_hr =np.empty_like(y_t)
-    y_rain=np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], 8))
-    for idx in range(y_pred_zmodel.shape[0]):
-        y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
-        y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
-        y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
-    
+    y_rain=np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro, 8))
+    if y_pred_zmodel.ndim == 1:  # el vector y_pred_zmodel tiene un shape de (len(test))
+        for idx in range(y_pred_zmodel.shape[0]):
+            y_t[idx, ...] = np.mean(y_pred_zmodel[idx][..., 0], axis=0)
+            y_hr[idx, ...] = np.mean(y_pred_zmodel[idx][..., 1], axis=0)
+            y_rain[idx, ...] = np.mean(y_pred_zmodel[idx][..., 2:], axis=0)
+    else:  # el vector y_pred_zmodel tiene un shape de (len(test), N, Ly, Fout)        
+        for idx in range(y_pred_zmodel.shape[0]):
+            y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
+            y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
+            y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
     y_t = np.expand_dims(y_t, axis=-1)
     y_hr = np.expand_dims(y_hr, axis=-1)
     for idx in range(y_rain.shape[0]):
@@ -288,18 +356,8 @@ def pipeline(file):
             y_rain[idx, idj] = np.where(y_rain[idx, idj] < max(y_rain[idx, idj]), 0, 1)
     
     y_pred_zmodel = np.concatenate([y_t,y_hr,y_rain], axis=-1)
-    #    y_pred_zmodel_mean[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
-    # for idx in range(y_pred_zmodel_mean.shape[0]):
-    #     for idj in range(y_pred_zmodel_mean.shape[1]):
-    #         y_pred_zmodel_mean[idx, idj] = np.where(y_pred_zmodel_mean[idx, idj] < max(y_pred_zmodel_mean[idx, idj]), 1, 0)
-    # y_pred_zmodel = y_pred_zmodel_mean.copy()  # (len(test), 72, 10)
-    # del y_pred_zmodel_mean
-    # print(f"{y_pred_zmodel.shape}", end="")
-    # print(f"\t\t\t\t\t{OK}")
-    print(f"{y_pred_zmodel.shape=}")
-    print(f"{y_t.shape=}")
-    print(f"{y_hr.shape=}")
-    print(f"{y_rain.shape=}")
+
+
     print(Fore.YELLOW + "Obteniendo valores reales y de prevision del conjunto de test desde el dataset de la estacion objetivo" + Style.RESET_ALL)
     # tambien necesitamos el y_real y y_nwp que estan en dataset_pmodel 
     kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='test', cfg=cfg, datasets=datasets_pmodel, metadata=metadata_pmodel)
@@ -314,7 +372,7 @@ def pipeline(file):
         print(f"\t{OK}")
     else:
         print("\tGenerando datos")
-        for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader)):  # P.shape = Y.shape  = (len(test), Ly + 1, Fout)
+        for i, (_, _, _, Y, P) in enumerate(tqdm(test_dataloader, leave=False)):  # P.shape = Y.shape  = (len(test), Ly + 1, Fout)
             y_real[i, ...] = Y[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
             y_nwp[i, ...] = P[:, 1:, :].numpy()      # hay que quitarles la componente 0 y pasarlos a numpy
         temporal.parent.mkdir(parents=True, exist_ok=True)

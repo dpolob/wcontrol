@@ -228,15 +228,10 @@ zmodel:
       # fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
-    visualizacion:
-      prediccion:
-        - temperatura
-        - hr
-        - precipitacion
-      muestras: "range" # random, all, list, range
-      inicio: 0
-      fin: "end"
-      paso: 50
+    muestras: "range" # random, all, list, range
+    inicio: 0
+    fin: "end"
+    paso: 50
 
 pmodel:
   estaciones:
@@ -263,12 +258,34 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.002893199770218999  # optuna
-      gru_n_layers: 1  # optuna
-      hidden_size: 100 # optuna
+      lr: 0.0026109442083340154  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 200 # optuna
       hidden_layers:
-        0: 118
-      optimizer_name: "Adam"
+        0: 79
+        1: 145
+        2: 249
+      optimizer_name: "Adamax"
+    # hr:
+    #   name: "RedGeneral"
+    #   save_model: True
+    #   plot_intermediate_results: True
+    #   early_stop: 5
+    #   epochs: 25
+    #   loss_function:
+    #     loss_fn: L1
+    #     reduction: mean
+    #     coefs: None
+    #   lr: 0.0026561820544519303  # optuna=0016561820544519303
+    #   gru_n_layers: 2  # optuna
+    #   hidden_size: 175  # optuna=75
+    #   hidden_layers:
+    #     0: 201
+    #     1: 247
+    #     2: 73
+    #     #3: 191
+    #     #4: 177
+    #   optimizer_name: "RMSprop"  # optuna
     hr:
       name: "RedGeneral"
       save_model: True
@@ -279,11 +296,15 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.001233310567246368  # optuna
+      lr: 0.0026109442083340154  # optuna=0016561820544519303
       gru_n_layers: 2  # optuna
-      hidden_size: 175  # optuna
+      hidden_size: 200  # optuna=75
       hidden_layers:
-        0: 234
+        0: 79
+        1: 145
+        2: 249
+        #3: 191
+        #4: 177
       optimizer_name: "Adamax"  # optuna
     precipitacion:
       name: "RedGeneral"
@@ -310,7 +331,7 @@ pmodel:
     train:
       enable: True
       fecha_inicio: "2020-03-15 00:00:00"
-      #fecha_inicio: "2020-12-15 00:00:00"
+      #fecha_inicio: "2021-01-10 00:00:00"
       fecha_fin: "2021-01-15 23:00:00"
       shuffle: True
     validation:

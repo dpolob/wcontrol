@@ -1,10 +1,6 @@
-experiment: "experimentoZP2"
+experiment: "experimentoFINALSHUFFLEFALSE"
 descripcion: | 
-  72-72 con 2 heads
-  dataset_pasado: 395, decoder_class_n_units_l0: 104, decoder_dropout: 0.025113415282590958, decoder_hrtemp_n_units_l0: 89,
-  decoder_lr: 0.0017454542687277807, decoder_optimizer_name: Adamax, decoder_temphr_n_layers: 1, encoder_bidirectional: False,
-  encoder_dropout: 0.1370193730667696, encoder_lr: 0.0017109279296515145, encoder_optimizer_name: RMSprop, encoder_rnn_num_layers: 1,
-  hidden_size: 50.0, trainer_alpha: 0.010348968947082392
+  Lo mismo que ZP1 pero poniendo un dataset de train mayor desde (2018-01-01 00:00:00 - pasado) y recortando una variable bio a 3 meses
 prediccion: 
   - temperatura
   - hr
@@ -32,9 +28,6 @@ paths:
   pmodel:
     dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
     dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
-#    dataset_zmodel: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
-#    dataset_zmodel_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
-    
     pmodel_train: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_train.pickle"
     pmodel_valid: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_valid.pickle"
     pmodel_test: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_test.pickle"
@@ -50,8 +43,8 @@ paths:
     dataset_zona_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
     predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
     viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
-    temp: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/temp/"
   
+
 preprocesado:
   outliers:
     temperatura:
@@ -91,14 +84,25 @@ zmodel:
       longitud: -2.7242639
       latitud: 42.3925069
       altitud: 523
-    - nombre: "Arenzana de Abajo"
+    - nombre: "Arenzana de Abajo-1"
       id: 2082
       format: "%Y-%m-%d %H:%M:%S"
       metricas:
         - temperatura
         - hr
         - precipitacion
-      ruta: "/home/diego/weather-control/data/processed/2082.csv"
+      ruta: "/home/diego/weather-control/data/processed/2082-1.csv"
+      longitud: -2.7357180
+      latitud: 42.3828770
+      altitud: 510            
+    - nombre: "Arenzana de Abajo-2"
+      id: 2082
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2082-2.csv"
       longitud: -2.7357180
       latitud: 42.3828770
       altitud: 510            
@@ -214,18 +218,17 @@ zmodel:
     train:
       enable: True
       fecha_inicio: "2018-01-15 00:00:00"
-      fecha_fin: "2021-01-15 23:00:00"
-      shuffle: True
+      fecha_fin: "2021-01-31 23:00:00"
+      shuffle: False
     validation:
       enable: True
-      fecha_inicio: "2021-01-16 00:00:00"
-      fecha_fin: "2021-03-31 23:00:00"
+      fecha_inicio: "2021-02-01 00:00:00"
+      fecha_fin: "2021-03-30 23:00:00"
       shuffle: True
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
-      fecha_fin: "2021-07-31 23:00:00"
-      # fecha_fin: "2021-04-03 23:00:00"
+      fecha_fin: "2021-04-30 23:00:00"
       use_checkpoint: best
   resultados:
     visualizacion:
@@ -263,14 +266,12 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.0026109442083340154  # optuna
-      gru_n_layers: 2  # optuna
-      hidden_size: 200 # optuna
+      lr: 0.002893199770218999  # optuna
+      gru_n_layers: 1  # optuna
+      hidden_size: 100 # optuna
       hidden_layers:
-        0: 79
-        1: 145
-        2: 249
-      optimizer_name: "Adamax"
+        0: 118
+      optimizer_name: "Adam"
     hr:
       name: "RedGeneral"
       save_model: True
@@ -281,16 +282,12 @@ pmodel:
         loss_fn: L1
         reduction: mean
         coefs: None
-      lr: 0.0016561820544519303  # optuna
-      gru_n_layers: 1  # optuna
-      hidden_size: 75  # optuna
+      lr: 0.001233310567246368  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 175  # optuna
       hidden_layers:
-        0: 201
-        1: 247
-        2: 73
-        3: 191
-        4: 177
-      optimizer_name: "RMSprop"  # optuna
+        0: 234
+      optimizer_name: "Adamax"
     precipitacion:
       name: "RedGeneral"
       save_model: True
@@ -298,40 +295,34 @@ pmodel:
       early_stop: 5
       epochs: 25
       loss_function:
-        loss_fn: CrossEntropyLoss
+        loss_fn: L1
         reduction: mean
         coefs: None
-        weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
-        #[1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]
-      lr: 0.005821622396546932  # optuna
+      lr: 0.001971576126654154  # optuna
       gru_n_layers: 2  # optuna
-      hidden_size: 125  # optuna
+      hidden_size: 50  # optuna
       hidden_layers:
-        0: 188
-        1: 173
-        2: 104
-        3: 84
-      optimizer_name: "RMSprop"  # optuna
+        0: 219
+        1: 89
+      optimizer_name: "AdamW"  # optuna
   dataloaders:
     train:
       enable: True
       fecha_inicio: "2020-03-15 00:00:00"
-      #fecha_inicio: "2021-01-10 00:00:00"
-      fecha_fin: "2021-01-15 23:00:00"
+      fecha_fin: "2021-01-31 23:00:00"
       shuffle: True
     validation:
       enable: True
-      fecha_inicio: "2021-01-16 00:00:00"
-      fecha_fin: "2021-03-31 23:00:00"
+      fecha_inicio: "2021-02-01 00:00:00"
+      fecha_fin: "2021-03-30 23:00:00"
       shuffle: True
     test:
       enable: True
       fecha_inicio: "2021-04-01 00:00:00"
       fecha_fin: "2021-07-31 23:00:00"
-      #fecha_fin: "2021-04-03 23:00:00"
       use_checkpoint: best
   resultados:
     muestras: "range" # random, all, list, range
     inicio: 0
     fin: "end"
-    paso: 50
+    paso: 10

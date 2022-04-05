@@ -10,6 +10,7 @@ experiments/experimento*/*
 data/
 *.pickle
 *.pickle_
+*.csv
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode

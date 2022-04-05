@@ -109,7 +109,7 @@ class BaseTrainer(ABC):
                 checkpoint_config = checkpoints[0]
             else:
                 checkpoint_config = list(filter(lambda x: x[1] == epoch, checkpoints))[0]
-            checkpoint = torch.load(checkpoint_config[0])
+            checkpoint = torch.load(checkpoint_config[0], map_location=self.device)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             if not only_model:
                 if type(self.optimizer) is list:

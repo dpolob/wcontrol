@@ -9,9 +9,7 @@ from torch.utils.data import Dataset
     
  
 class PModelDataset(Dataset):
-    """
-        
-    """
+
     def __init__(self, datasets: list, componentes: slice) -> tuple:
         """Dataset especifico para pmodel
 

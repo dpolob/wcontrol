@@ -206,156 +206,6 @@ def zmodel(file):
         best_epoch = sorted(valid_losses.items(), key=lambda x:x[1])[0][0]
         print(f"Mejor loss de validacion: {best_epoch}")
 
-# @main.command()
-# @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
-# @click.option('--temp', is_flag=True, default= False, help='Entrenar modelo de temperatura')
-# @click.option('--hr', is_flag=True, default= False, help='Entrenar modelo de HR')
-# @click.option('--rain', is_flag=True, default= False, help='Entrenar modelo de precipitacion')
-# def pmodel(file, temp, hr, rain):
-    
-#     try:
-#         with open(file, 'r') as handler:
-#             cfg = yaml.safe_load(handler)
-#             name = cfg["experiment"]
-#             cfg = AttrDict(parser(name, None)(cfg))
-#             print(f"Usando {file} como archivo de configuracion")
-#         with open(Path(cfg.paths.pmodel.dataset_metadata), 'r') as handler:
-#             metadata = yaml.safe_load(handler)
-#             print("Leidos metadatos del dataset")
-#         with open(Path(cfg.paths.pmodel.dataset), 'rb') as handler:
-#             datasets = pickle.load(handler)
-#             print(f"Usando {cfg.paths.pmodel.dataset} como archivo de datos procesados de estaciones")
-#     except Exception as e:
-#         print(f"El archivo de configuracion del experimento no existe o no existe el archivo {cfg.paths.pmodel.dataset} \
-#             con el dataset para el modelo zonal o {cfg.paths.pmodel.dataset_metadata} de metadatos del dataset del \
-#             modelo zonal. Mas info en: {e}")
-#         exit()
-#     device = 'cuda' if cfg.pmodel.model.use_cuda else 'cpu'
-#     Fout = len(cfg.prediccion)
-
-#     ## Generar Dataset de train
-#     try:
-#         train_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_train), "rb"))
-#         print(f"Cargango datos de train desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_train}")
-#     except:
-#         print(f"Generando datos de train...")
-#         Path(cfg.paths.pmodel.pmodel_train).parent.mkdir(parents=True, exist_ok=True)
-#         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
-#         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-#         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
-#         pred_nwp = np.empty_like(y_real)
-#         for i, (_, _, _, Y, P) in enumerate(tqdm(dataloader)):
-#             # hay que quitarles la componente 0 y pasarlos a numpy porque son tensores
-#             y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
-#             pred_nwp[i, ...] = P[:, 1:, :].numpy()  # pred_nwp = (len(dataset), Ly, Fout)
-#         train_dataset = [pred_nwp, y_real]
-#         with open(Path(cfg.paths.pmodel.pmodel_train), 'wb') as handler:
-#             pickle.dump(train_dataset, handler)
-
-#     ## Generar Dataset de validacion
-#     try:
-#         valid_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_valid), "rb"))
-#         print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}")
-#     except:
-#         print(f"Generando datos de validacion...")
-#         Path(cfg.paths.pmodel.pmodel_valid).parent.mkdir(parents=True, exist_ok=True)
-#         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
-#         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-#         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
-#         pred_nwp = np.empty_like(y_real)
-#         for i, (_, _, _, Y, P) in enumerate(tqdm(dataloader)):
-#             # hay que quitarles la componente 0 y pasarlos a numpy porque son tensores
-#             y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
-#             pred_nwp[i, ...] = P[:, 1:, :].numpy()  # pred_nwp = (len(dataset), Ly, Fout)
-            
-#         valid_dataset = [pred_nwp, y_real]
-#         with open(Path(cfg.paths.pmodel.pmodel_valid), 'wb') as handler:
-#             pickle.dump(valid_dataset, handler)
-
-#     def generar_modelo(modelo: str, ) -> None:
-#         if modelo == 'temperatura':
-#             cfg_inner = AttrDict(parser(None, None, 'temperatura')(copy.deepcopy(cfg_previo)))
-#             handler = cfg_inner.pmodel.model.temperatura
-#             F = 1
-#             componente = slice(0, 1)
-#         elif modelo == 'hr':
-#             cfg_inner = AttrDict(parser(None, None, 'hr')(copy.deepcopy(cfg_previo)))
-#             handler = cfg_inner.pmodel.model.hr
-#             F = 1
-#             componente = slice(1, 2)
-#         elif modelo == 'precipitacion':
-#             cfg_inner = AttrDict(parser(None, None, 'precipitacion')(copy.deepcopy(cfg_previo)))
-#             handler = cfg_inner.pmodel.model.precipitacion
-#             F = len(metadata['bins'])
-#             componente = slice(2, 2 + len(metadata['bins']))
-#         else:
-#             raise NotImplementedError  
-        
-#         EPOCHS = handler.epochs
-#         kwargs_loss = handler.loss_function
-#         TRAIN = cfg_inner.pmodel.dataloaders.train.enable
-#         VALIDATION = cfg_inner.pmodel.dataloaders.validation.enable
-#         print(f"Usando {cfg_inner.paths.pmodel.runs} como ruta para runs")
-#         print(f"Usando {cfg_inner.paths.pmodel.checkpoints} como ruta para guardar checkpoints")
-#         print(f"Train: {SI if TRAIN else NO}, Validation: {SI if VALIDATION else NO}\n")
-#         shuffle = False if 'shuffle' not in cfg_inner.pmodel.dataloaders.train.keys() else cfg_inner.pmodel.dataloaders.train.shuffle
-#         if TRAIN:
-#             train_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=train_dataset, componentes=componente),
-#                                         sampler=sa_pmodel.PModelSampler(datasets=train_dataset, batch_size=1, shuffle=shuffle),    
-#                                         batch_size=None,
-#                                         num_workers=2)
-#         shuffle = False if 'shuffle' not in cfg_inner.pmodel.dataloaders.validation.keys() else cfg_inner.pmodel.dataloaders.validation.shuffle
-#         if VALIDATION:
-#             valid_dataloader = DataLoader(dataset=ds_pmodel.PModelDataset(datasets=valid_dataset, componentes=componente),    
-#                                         sampler=sa_pmodel.PModelSampler(datasets=valid_dataset, batch_size=1, shuffle=shuffle),
-#                                         batch_size=None,
-#                                         num_workers=2)
-            
-#         print(f"\tDataset de train: {len(train_dataloader)}")
-#         print(f"\tDataset de validacion: {len(valid_dataloader)}")
-#         kwargs_model={"Fin": F, 
-#                       "Fout": F,
-#                       "gru_num_layers": handler.gru_n_layers,
-#                       "hidden_size": handler.hidden_size,
-#                       "hidden_layers": handler.hidden_layers}
-#         model = md_pmodel.RedGeneral(**kwargs_model)
-#         model = model.to(device)
-#         ## Funciones loss
-#         loss_fn = lf.LossFunction(**kwargs_loss)
-#         model_optimizer = getattr(optim, handler.optimizer_name)(model.parameters(), lr=handler.lr, weight_decay=handler.lr / 10)
-#         trainer = tr_pmodel.TorchTrainer( model=model, optimizer=model_optimizer, loss_fn = loss_fn, device=device,
-#                                          checkpoint_folder= Path(cfg_inner.paths.pmodel.checkpoints),
-#                                          runs_folder= Path(cfg_inner.paths.pmodel.runs),
-#                                          keep_best_checkpoint=True,
-#                                          save_model= handler.save_model,
-#                                          save_model_path=Path(cfg_inner.paths.pmodel.model),
-#                                          early_stop=handler.early_stop)
-#         if TRAIN and VALIDATION:
-#             trainer.train(EPOCHS, train_dataloader, valid_dataloader, resume_only_model=True, resume=True, plot=handler.plot_intermediate_results, rain=True if modelo == 'precipitacion' else False)
-#         else:
-#             trainer.train(EPOCHS, train_dataloader, resume_only_model=True, resume=True, plot=handler.plot_intermediate_results, rain=True if modelo == 'precipitacion' else False)
-        
-#         with open(Path(cfg_inner.paths.pmodel.checkpoints) / "valid_losses.pickle", 'rb') as handler:
-#             valid_losses = pickle.load(handler)
-#         if valid_losses != {}:
-#             best_epoch = sorted(valid_losses.items(), key=lambda x:x[1])[0][0]
-#             print(f"Mejor loss de validacion: {best_epoch}")
-    
-#     cfg_previo = copy.deepcopy(dict(cfg))
-#     if not temp and not hr and not rain:
-#         print("No se ha definido modelo para entrenar")
-#         exit()
-        
-#     if temp:
-#         ## Parte especifica temperatura
-#         print("Entrenado modelo de temperatura...")
-#         generar_modelo('temperatura')
-#     if hr:
-#         print("Entrando modelo de hr...")
-#         generar_modelo('hr')
-#     if rain:
-#         print("Entrando modelo de precipitacion...")
-#         generar_modelo('precipitacion')
 
 @main.command()
 @click.option('--file', type=click.Path(exists=True), help='path/to/.yml Ruta al archivo de configuracion')
@@ -397,12 +247,13 @@ def pmodel(file, temp, hr, rain):
     
     ## Generar Dataset de train
     print(Fore.YELLOW + "Prediccion con el modelo zonal del conjunto de train del dataset de estaciones zonal"+ Style.RESET_ALL)
-
-    try:
-        print(f"\tCargango datos de train desde el archivo temporarl existente {cfg.paths.pmodel.pmodel_train}")
+    
+    print(f"\tCargando datos de train desde el archivo temporarl existente {cfg.paths.pmodel.pmodel_train}", end='')
+    if Path(cfg.paths.pmodel.pmodel_train).is_file():
         train_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_train), "rb"))
         print(f"\t{OK}")
-    except:
+    else:
+        print(f"{FAIL}")
         print(f"\tGenerando datos de train")
         Path(cfg.paths.pmodel.pmodel_train).parent.mkdir(parents=True, exist_ok=True)
         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=dataset_zmodel, metadata=metadata_zmodel)
@@ -411,14 +262,21 @@ def pmodel(file, temp, hr, rain):
         y_pred_zmodel = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
         print(f"\tRealizando conversion de {y_pred_zmodel.shape} a ", end='')
         # debemos tomar la media de las salidas
-        y_t = np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2]))
+        y_t = np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro))
         y_hr =np.empty_like(y_t)
-        y_rain=np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], 8))
-        for idx in range(y_pred_zmodel.shape[0]):
-            y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
-            y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
-            y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
-    
+        y_rain=np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro, 8))
+
+        if y_pred_zmodel.ndim == 1:  # el vector y_pred_zmodel tiene un shape de (len(test))
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx][..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx][..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx][..., 2:], axis=0)
+        else:  # el vector y_pred_zmodel tiene un shape de (len(test), N, Ly, Fout)        
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
+        
         y_t = np.expand_dims(y_t, axis=-1)
         y_hr = np.expand_dims(y_hr, axis=-1)
         for idx in range(y_rain.shape[0]):
@@ -426,6 +284,7 @@ def pmodel(file, temp, hr, rain):
                 y_rain[idx, idj] = np.where(y_rain[idx, idj] < max(y_rain[idx, idj]), 0, 1)
         y_rain.astype(int)
         y_pred_zmodel = np.concatenate([y_t,y_hr,y_rain], axis=-1)
+    
         print(f"\t {y_pred_zmodel.shape}", end='')
         print(f"\t{OK}")
                 
@@ -433,9 +292,7 @@ def pmodel(file, temp, hr, rain):
         y_real = np.empty((len(dataloader), cfg.futuro, Fout))
         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='train', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
-         
-
-        for i, (_, _, _, Y, _) in enumerate(tqdm(dataloader)):
+        for i, (_, _, _, Y, _) in enumerate(tqdm(dataloader, leave=False)):
             # hay que quitarles la componente 0 y pasarlos a numpy porque son tensores
             y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
         print(f"\t{OK}")
@@ -448,27 +305,37 @@ def pmodel(file, temp, hr, rain):
 
     ## Generar Dataset de validacion
     print(Fore.YELLOW + "Prediccion con el modelo zonal del conjunto de validacion del dataset de estaciones zonal"+ Style.RESET_ALL)
-    try:
-        print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}")
+    print(f"Cargango datos de validacion desde el modelo zmodel desde {cfg.paths.pmodel.pmodel_valid}", end='')
+    if Path(cfg.paths.pmodel.pmodel_valid).is_file():
         valid_dataset = pickle.load(open(Path(cfg.paths.pmodel.pmodel_valid), "rb"))
         print(f"\t{OK}")
-    except:
+    else:
+        print(f"{FAIL}")
         print(f"Generando datos de validacion")
         Path(cfg.paths.pmodel.pmodel_valid).parent.mkdir(parents=True, exist_ok=True)
         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=dataset_zmodel, metadata=metadata_zmodel)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
         kwargs_prediccion = generar_kwargs.predict(modelo='zmodel', cfg=cfg)
-        y_pred_zmodel = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(test), N, Ly, Fout)
+        y_pred_zmodel = predictor.predict(dataloader, **kwargs_prediccion)  # y_pred = (len(test)) que continen (N, Ly, Fout)
+        # dependiendo si N es variable devuelve un objeto (len(test)) que contiene arrays (N, Ly, Fout) o un array (len(test), N, Ly, Fout))
+        
         print(f"\tRealizando conversion de {y_pred_zmodel.shape} a ", end='')
         # debemos tomar la media de las salidas
-        y_t = np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2]))
+        y_t = np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro))
         y_hr =np.empty_like(y_t)
-        y_rain=np.empty(shape=(y_pred_zmodel.shape[0], y_pred_zmodel.shape[2], 8))
-        for idx in range(y_pred_zmodel.shape[0]):
-            y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
-            y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
-            y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
-    
+        y_rain=np.empty(shape=(y_pred_zmodel.shape[0], cfg.futuro, 8))
+
+        if y_pred_zmodel.ndim == 1:  # el vector y_pred_zmodel tiene un shape de (len(test))
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx][..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx][..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx][..., 2:], axis=0)
+        else:  # el vector y_pred_zmodel tiene un shape de (len(test), N, Ly, Fout)        
+            for idx in range(y_pred_zmodel.shape[0]):
+                y_t[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 0], axis=0)
+                y_hr[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 1], axis=0)
+                y_rain[idx, ...] = np.mean(y_pred_zmodel[idx, ..., 2:], axis=0)
+
         y_t = np.expand_dims(y_t, axis=-1)
         y_hr = np.expand_dims(y_hr, axis=-1)
         for idx in range(y_rain.shape[0]):
@@ -484,7 +351,7 @@ def pmodel(file, temp, hr, rain):
         kwargs_dataloader = generar_kwargs.dataloader(modelo='pmodel', fase='validation', cfg=cfg, datasets=datasets, metadata=metadata)
         dataloader = predictor.generar_test_dataset(**kwargs_dataloader)
  
-        for i, (_, _, _, Y, _) in enumerate(tqdm(dataloader)):
+        for i, (_, _, _, Y, _) in enumerate(tqdm(dataloader, leave=False)):
             # hay que quitarles la componente 0 y pasarlos a numpy porque son tensores
             y_real[i, ...] = Y[:, 1:, :].numpy()  # y_real = (len(dataset), Ly, Fout)
         print(f"\t{OK}")

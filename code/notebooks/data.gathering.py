@@ -75,8 +75,20 @@ df_path = Path("/home/diego/weather-control/data/processed/28.csv")
 df = pd.read_csv(df_path, na_values="NaN", header=0)
 df['fecha'] = pd.to_datetime(df['fecha'], format='%Y-%m-%d %H:%M:%S')
 df.set_index('fecha', drop=False, inplace=True)
-
 print(df.isna().sum())
+
+fechas = df['fecha']
+df.drop(columns=['fecha'], inplace=True)
+imp_mean = IterativeImputer(random_state=0)
+idf = imp_mean.fit_transform(df)
+idf = pd.DataFrame(idf, columns=df.columns)
+df['temperatura'] = idf['temperatura'].values
+df['hr'] = idf['hr'].values
+df['precipitacion'] = idf['precipitacion'].values
+df['fecha'] = fechas
+print(df.isna().sum())
+
+
 fig, ax = plt.subplots(3,1,figsize=(15,15))
 ax[0].plot(df['temperatura'])
 ax[1].plot(df['hr'])

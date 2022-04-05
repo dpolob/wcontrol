@@ -1,7 +1,7 @@
 version: '3'
 services:
-  prediccion:
-    container_name: prediccion_villaverde
+  wcontrol-api:
+    container_name: wcontrol-api
     build:
       dockerfile: dockerfile
       context: .
@@ -9,3 +9,7 @@ services:
       - PREDICTION_PORT=5100
     ports:
       - '5012:5100'
+    volumes:
+      - /home/diego/wcontrol:/opt/wcontrol
+      - /home/diego/wcontrol/experiments/experimentoZP1/pmodel:/opt/modelo-wc/pmodel
+      - /home/diego/wcontrol/experiments/experimentoZP1/zmodel:/opt/modelo-wc/zmodel

@@ -105,6 +105,8 @@ def predict(test_dataloader: DataLoader=None, tipo: str='zmodel', **kwargs) -> n
         trainer._load_best_checkpoint()
     else:
         trainer._load_checkpoint(epoch=use_checkpoint, only_model=True)
-    y_pred = trainer.predict(test_dataloader)  # se devuelve una lista de numpy (len(test), N, Ly, Fout), dataloader
-    return np.array(y_pred)
+    y_pred = trainer.predict(test_dataloader)  # se devuelve numpy (len(test), N, Ly, Fout),
+    ### OJO. Cambios en la version de numpy obligan a que el vector que se obtiene sea de tipo "object"
+    ### si N es variable
+    return np.array(y_pred, dtype=object)
 

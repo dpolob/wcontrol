@@ -55,7 +55,7 @@ class Prediccion(Resource):
             logger.error(f"[Prediccion] Problemas en la conexion con NWP. {e}")
             return Response(f"Problemas en la conexion con NWP. {e}", status=500, mimetype='text/plain') 
         ## PREDICCION ZONAL
-        device = secrets.device
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         logger.info(f"[Prediccion] Usando {device} como dispositivo de calculo")
         try:
             Xf, Yt, P = api_modules.cargador_datos(datasets=df_pasado,nwps=nwp, pasado=secrets.pasado, futuro=72,
@@ -63,11 +63,13 @@ class Prediccion(Resource):
             
             path_zmodel_checkpoints = secrets.path_zmodel_checkpoints
             path_zmodel = secrets.path_zmodel
-            model = torch.load(Path(path_zmodel) , map_location='cpu')
+            model = torch.load(Path(path_zmodel) , map_location=torch.device('cpu'))
+            
             model.to(device)
             trainer = tr.TorchTrainer(model=model,
                                     device=device,
                                     checkpoint_folder= path_zmodel_checkpoints)
+            
             trainer._load_best_checkpoint()
             logger.info("[Prediccion] Cargado modelo zmodel")
             y_pred = trainer.predict_one(Xf, Yt, P)
@@ -96,6 +98,7 @@ class Prediccion(Resource):
             trainer = tr_pmodel.TorchTrainer(model=model,
                                             device=device,
                                             checkpoint_folder= path_temp_checkpoints)
+            logger.info("ddd")
             trainer._load_best_checkpoint()
             logger.info("[Prediccion] Cargado modelo de temperatura")
             y_pred_temp = trainer.predict_one(torch.unsqueeze(y_pred_zmodel[...,0], dim=-1))

@@ -85,16 +85,16 @@ logger = logging.getLogger(__name__)
     
 #     return False if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns else True
 
-# def check_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: dict=None) -> bool:
-#     """Comprueba que no haya outliers en el dataset"""
+def quitar_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: dict=None) -> bool:
+    """Comprueba que no haya outliers en el dataset"""
 
-#     for metrica in metricas:
-#         outlier = outliers[metrica]
-#         if any(df[metrica] > outlier['max'] * (1 + outlier['tol'] / 100)):
-#             df.loc[df[metrica] > outlier['max'] * (1 + outlier['tol'] / 100), metrica] = outlier['max']
-#         if any(df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100)):
-#             df.loc[df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100), metrica] = outlier['min']
-#     return df
+    for metrica in metricas:
+        outlier = outliers[metrica]
+        if any(df[metrica] > outlier['max'] * (1 + outlier['tol'] / 100)):
+            df.loc[df[metrica] > outlier['max'] * (1 + outlier['tol'] / 100), metrica] = outlier['max']
+        if any(df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100)):
+            df.loc[df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100), metrica] = outlier['min']
+    return df
 
 # def check_longitud(df: pd.DataFrame=None, longitud: int=None) -> bool:
 #     """Comprueba la longitud de un dataset"""
@@ -139,16 +139,16 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
     for i, estacion in enumerate(estaciones):
     
         if estacion['fecha_maxima'] - estacion['fecha_minima'] < timedelta(days=30):
-            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No tiene mas de un año de pasado")
+            logger.info(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No tiene mas de un año de pasado")
             continue
         elif now - estacion['fecha_maxima'] > timedelta(hours=2):
-            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Su ultimo envio es posterior a 2 horas")
+            logger.info(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Su ultimo envio es posterior a 2 horas")
             continue
         elif len(estacion[1]) != len(estacion[6]) or len(estacion[11]) != len(estacion[6]):
-            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Las medidas de la estacion no estan sincronizadas")
+            logger.info(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} Las medidas de la estacion no estan sincronizadas")
             continue
         elif len(set(estacion['fechas_parciales']))!=1:  # No hay sincronismo
-            logger.debug(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No hay sincronismo. Fechas máximas no coinciden")
+            logger.info(f"[API][generar_variables] OMIT Estacion: {estacion['nombre']} No hay sincronismo. Fechas máximas no coinciden")
             continue
         else:
             estaciones_def.append(estacion)
@@ -163,14 +163,18 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
     for estacion in estaciones:
         df = {"fecha": estacion['fecha'], "temperatura": estacion[1], "hr": estacion[6], "precipitacion": estacion[11]}
         df = pd.DataFrame(df)
-
         df['fecha'] = pd.to_datetime(df['fecha'], format="%Y-%m-%d %H:%M:%S")
         df.set_index('fecha', drop=True, inplace=True)
-        df = check_outliers(df, metricas=["temperatura", "hr", "temperatura"], outliers=outliers)
+        if not check_outliers(df, metricas=["temperatura", "hr", "precipitacion"], outliers=outliers):
+            logger.info(f"[API][generar_variables] Estacion: {estacion['nombre']} Hay outliers... eliminacion automatica")
+            df = quitar_outliers(df, metricas=["temperatura", "hr", "precipitacion"], outliers=outliers)
+            if df.isna().sum().sum() > 0:
+                logger.info(f"[API][generar_variables] Estacion: {estacion['nombre']} Hay Nans! despues de quitar outliers")
+                raise Exception(f"[API][generar_variables] Estacion: {estacion['nombre']} Hay Nans! despues de quitar outliers")
         df = df.resample('1H').interpolate()
 
         if df.isna().sum().sum() > 0:
-            logger.debug(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en los datos")
+            logger.info(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en los datos")
             df = quitar_nans(df)
        
         var_bio, df = variables_bioclimaticas(df)
@@ -180,7 +184,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
 
         var_macd, df = variables_macd(df)
         if df.isna().sum().sum() > 0:
-            logger.debug(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en macd")
+            logger.info(f"[API][generar_variables] WARN Estacion: {estacion['nombre']} Hay Nans! en macd")
             df = quitar_nans(df)
             
         df = recortar(df, fecha_maxima, pasado)
@@ -202,7 +206,6 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
         df['altitud'] = altitudes[i] - cdg[2]
         df.reset_index(drop=True, inplace=True)
 
-    parametros = dict()
     for metrica in (['temperatura', 'hr', 'precipitacion'] + var_bio + var_macd):
         scaler = Escalador(Xmax=escaladores[metrica]['max'], Xmin=escaladores[metrica]['min'], min=0, max=1, auto_scale=False)
         for df in dfs:
@@ -293,7 +296,7 @@ def fetch_pasado(url: str, token: str, estaciones: list, metricas: list, now: da
                 data[metrica] = [v for k, v in dict(json.loads(data_response_cesens.text)).items()]
                 fechas_parciales.append(max([datetime.fromtimestamp(int(k)) for k, v in dict(json.loads(data_response_cesens.text)).items()]))
         except:
-            logger.debug(f"[API][fetch_pasado] FAIL Estacion: {data['nombre']}")
+            logger.info(f"[API][fetch_pasado] FAIL Estacion: {data['nombre']}")
             continue
 
         data['fechas_parciales'] = fechas_parciales

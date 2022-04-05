@@ -7,6 +7,7 @@ from tqdm import tqdm
 from colorama import Fore, Style
 from math import sqrt, sin, cos, atan2, pi
 from datetime import datetime
+from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import OneHotEncoder
 from datetime import datetime
@@ -173,10 +174,8 @@ def variables_bioclimaticas(df: pd.DataFrame=None) -> tuple:
         df['indicelang'] = bio.indice_lang(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
         var_bio.append('indicelang')
     if not no_NaNs(df):
-        tqdm.write("Se han generado NANs" + FAIL)
         return (None, None)
     else:
-        tqdm.write(OK)
         return (var_bio, df)        
     
 def variables_macd(df: pd.DataFrame=None) -> tuple:
@@ -200,10 +199,8 @@ def variables_macd(df: pd.DataFrame=None) -> tuple:
         df['precipitacionmacd'] = macd(np.array(df['precipitacion'].values))
         var_macd.append('precipitacionmacd')
     if not no_NaNs(df):
-        tqdm.write("Se han generado NANs" + FAIL)
         return (None, None)
     else:
-        tqdm.write(OK)
         return (var_macd, df)         
 
         
@@ -264,12 +261,12 @@ def generar_variables(estaciones: list=None, outliers: list=None, proveedor: dic
         tqdm.write(f"{df.isna().sum().sum()}", end='')
         df = quitar_nans(df)
         tqdm.write(" -> " + str(df.isna().sum().sum()), end='')
-        if df.isna().sum().sum() > 0:
+        if no_NaNs(df):
+            tqdm.write(OK)
+        else:
             tqdm.write("Se han generado NANs!!" + FAIL)
             exit()
-        else:
-            tqdm.write(OK)
-       
+            
         tqdm.write(f"\tAgregar predicciones", end='')
         nwp = pd.read_csv(proveedor.ruta, sep=',', decimal='.', header='infer')
         nwp['fecha'] = pd.to_datetime(nwp['fecha'], format=proveedor.format if "format" in proveedor.keys() else "%Y-%m-%d %H:%M:%S")
@@ -287,13 +284,19 @@ def generar_variables(estaciones: list=None, outliers: list=None, proveedor: dic
         tqdm.write(f"\tCalculando variables climáticas", end='')
         var_bio, df = variables_bioclimaticas(df)
         if var_bio is None:
+            tqdm.write("Se han generado NANs" + FAIL)
             exit()
+        else:
+            tqdm.write(OK)
           
         tqdm.write(f"\tCalculando MACD", end='')
         var_macd, df = variables_macd(df)
         if var_macd is None:
+            tqdm.write("Se han generado NANs" + FAIL)
             exit()
-       
+        else:
+            tqdm.write(OK)
+        
         tqdm.write(f"\tCalculando variables cíclicas de fecha", end='')
         df = temporales(df)
         if no_NaNs(df):

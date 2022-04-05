@@ -95,7 +95,7 @@ class TorchTrainer(BaseTrainer):
         self.model.eval()
         predictions = []
         with torch.no_grad():
-            for Xf, X, Yt, Y, P in tqdm(dataloader):
+            for Xf, X, Yt, Y, P in tqdm(dataloader, leave=False):
                 Xf = Xf.to(self.device)
                 X = X.to(self.device)
                 Yt = Yt.to(self.device)
@@ -113,6 +113,7 @@ class TorchTrainer(BaseTrainer):
             Yt = Yt.to(self.device)
             P = P.to(self.device)
             y_pred = self.model(Xf, Xf, Yt, Yt, P)
+            
         return y_pred
 
     

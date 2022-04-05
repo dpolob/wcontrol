@@ -28,7 +28,7 @@ class RNNEncoder(nn.Module):
         self.rnn_directions = 2 if self.bidirectional else 1
         self.rnn_dropout = rnn_dropout
               
-        self.gru = nn.GRU(
+        self.gru = nn.LSTM(
             num_layers=self.rnn_num_layers,
             input_size=self.input_feature_len,
             hidden_size=self.hidden_size,
@@ -103,7 +103,7 @@ class DecoderCell(nn.Module):
         self.dropout = dropout      
         self.regres_hidden_layers = len(regres_hidden_layers)
         self.class_hidden_layers =len(class_hidden_layers)
-        self.decoder_rnn_cell = nn.GRUCell(input_size=self.input_feature_len, hidden_size=self.hidden_size)
+        self.decoder_rnn_cell = nn.LSTMCell(input_size=self.input_feature_len, hidden_size=self.hidden_size)
         self.dropout = nn.Dropout(dropout)
         
         # Head para temperatura y hr (Regresion)
