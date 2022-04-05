@@ -17,3 +17,4 @@ tqdm
 colorama
 matplotlib
 seaborn
+cyclemoid_pytorch==1.1.0

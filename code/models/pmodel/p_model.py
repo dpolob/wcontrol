@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from cyclemoid_pytorch import CycleMoid
 
 
 class RedGeneral(nn.Module):
@@ -25,7 +26,7 @@ class RedGeneral(nn.Module):
         for i in range(len(hidden_layers)):
             out_features = int(hidden_layers[i])
             layers.append(torch.nn.Linear(in_features, out_features))
-            layers.append(torch.nn.ReLU())
+            layers.append(CycleMoid())
             in_features = out_features
         layers.append(torch.nn.Linear(in_features, Fout))
         self.head = torch.nn.Sequential(*layers)
