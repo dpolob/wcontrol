@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+from common.utils.smelu import SmeLU
 
 class RNNEncoder(nn.Module):
     """Define una RNN basada en GRU"""
@@ -112,7 +112,7 @@ class DecoderCell(nn.Module):
         for i in range(self.regres_hidden_layers):
             out_features = int(regres_hidden_layers[i])
             temphr.append(torch.nn.Linear(in_features, out_features))
-            temphr.append(torch.nn.ReLU())
+            temphr.append(SmeLU(beta=1.1))
             in_features = out_features
         temphr.append(torch.nn.Linear(in_features, output_size - self.bins_len))
         self.temphr_head = torch.nn.Sequential(*temphr)
@@ -123,7 +123,7 @@ class DecoderCell(nn.Module):
         for i in range(self.class_hidden_layers):
             out_features = int(class_hidden_layers[i])
             class_head.append(torch.nn.Linear(in_features, out_features))
-            class_head.append(torch.nn.ReLU())
+            class_head.append(SmeLU(beta=1.1))
             in_features = out_features
         class_head.append(torch.nn.Linear(in_features, self.bins_len))
         self.class_head = torch.nn.Sequential(*class_head)

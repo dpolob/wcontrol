@@ -1,0 +1,350 @@
+experiment: "experimentoFINALSMELU"
+descripcion: | 
+  Modelo Seq2Seq_2head optimizado con optuna
+prediccion: 
+  - temperatura
+  - hr
+  - clase_precipitacion_0
+  - clase_precipitacion_1
+  - clase_precipitacion_2
+  - clase_precipitacion_3
+  - clase_precipitacion_4
+  - clase_precipitacion_5
+  - clase_precipitacion_6
+  - clase_precipitacion_7
+
+pasado: 395
+futuro: 72
+
+paths:
+  zmodel:
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/runs/"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/checkpoints/"
+    model: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/model.pth"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/zmodel/outputs/{{epoch}}/viz/"
+  pmodel:
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
+    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    pmodel_train: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_train.pickle"
+    pmodel_valid: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_valid.pickle"
+    pmodel_test: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/pmodel_test.pickle"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/outputs/{{prediccion}}/{{epoch}}/prediccion_test.pickle"
+    runs: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/runs/{{prediccion}}"
+    checkpoints: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/checkpoints/{{prediccion}}"
+    model: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/model_{{prediccion}}.pth"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/pmodel/outputs/{{prediccion}}/{{epoch}}/viz/"
+  pipeline:
+    dataset: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.pickle"
+    dataset_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_pmodel.yaml"
+    dataset_zona: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.pickle"
+    dataset_zona_metadata: "/home/diego/weather-control/experiments/{{experiment}}/data/dataset_zmodel.yaml"
+    predictions: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/prediccion_test.pickle"
+    viz: "/home/diego/weather-control/experiments/{{experiment}}/pipeline/outputs/{{prediccion}}/"
+
+preprocesado:
+  outliers:
+    temperatura:
+      min: -10
+      max: 43
+      tol: 10
+    hr:
+      min: 0
+      max: 100
+      tol: 0
+    precipitacion:
+      min: 0
+      max: 104 # desde 2010
+      tol: 0
+ 
+zmodel:    
+  estaciones:
+    - nombre: "Villar de Torre"
+      id: 25
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/25.csv"
+      longitud: -2.8596367
+      latitud: 42.3809186
+      altitud: 727
+    - nombre: "Arenzana de Abajo35"
+      id: 35
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/35.csv"
+      longitud: -2.7242639
+      latitud: 42.3925069
+      altitud: 523
+    - nombre: "Arenzana de Abajo-1"
+      id: 2082
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2082-1.csv"
+      longitud: -2.7357180
+      latitud: 42.3828770
+      altitud: 510            
+    - nombre: "Arenzana de Abajo-2"
+      id: 2082
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2082-2.csv"
+      longitud: -2.7357180
+      latitud: 42.3828770
+      altitud: 510            
+    - nombre: "Badaran-El Hombro"
+      id: 2684
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2684.csv"
+      longitud: -2.8634773
+      latitud: 42.3721760
+      altitud: 751
+    - nombre: "Somalcampo"
+      id: 2698
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2698.csv"
+      longitud: -2.8912790
+      latitud: 42.3905560
+      altitud: 815
+    - nombre: "Villaverde"
+      id: 2706
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2706.csv"
+      longitud: -2.7978570
+      latitud: 42.3320800
+      altitud: 782
+    - nombre: "Cordovin"
+      id: 2966
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2966.csv"
+      longitud: -2.8147230
+      latitud: 42.3867790
+      altitud: 594
+  proveedor:
+    - nombre: "Nájera"
+      id: 1289
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/1289.csv"
+      longitud: -2.7266667
+      latitud: 42.4141667
+      altitud: 500
+  model:
+    name: "seq2seq_2layers_2heads"
+    epochs: 25
+    use_cuda: True
+    save_model: True
+    plot_intermediate_results: True
+    early_stop: 5
+    loss_function:
+      loss_fn: L1
+      reduction: mean
+      coefs: None
+    encoder:
+      lr: 0.0017109279296515145  # optuna
+      rnn_num_layers: 1  # optuna
+      hidden_size: 50  # optuna
+      bidirectional: False  # optuna
+      rnn_dropout: 0.1370193730667696  # optuna
+      optimizer_name: "RMSprop"
+      features: [  'precipitacion', 'temperatura', 'hr', 'integraltermica', 'integralrain',
+       'indiceangtrom', 'indicemartonne', 'indicelang', 'tempmacd', 'hrmacd', 'precipitacionmacd', 
+       'dia', 'mes', 'hora', 'distancia', 'altitud',
+       'clase_precipitacion_0', 'clase_precipitacion_1', 'clase_precipitacion_2',
+       'clase_precipitacion_3', 'clase_precipitacion_4', 'clase_precipitacion_5',
+       'clase_precipitacion_6', 'clase_precipitacion_7']
+    decoder:
+      lr: 0.0017454542687277807  # optuna
+      hidden_size: 50  # optuna
+      dropout: 0.025113415282590958  # optuna
+      alpha: 0.010348968947082392  #optuna
+      temphr_n_layers:
+        0: 89  # optuna
+      class_n_layers:
+        0: 104  # optuna
+      optimizer_name: "Adamax"  # optuna
+      features:
+      - dia
+      - mes
+      - hora
+      - distancia
+      - altitud
+      nwp:
+      - nwp_temperatura
+      - nwp_hr
+      - nwp_clase_precipitacion_0
+      - nwp_clase_precipitacion_1
+      - nwp_clase_precipitacion_2
+      - nwp_clase_precipitacion_3
+      - nwp_clase_precipitacion_4
+      - nwp_clase_precipitacion_5
+      - nwp_clase_precipitacion_6
+      - nwp_clase_precipitacion_7
+  dataloaders:
+    train:
+      enable: True
+      fecha_inicio: "2018-01-15 00:00:00"
+      fecha_fin: "2021-01-31 23:00:00"
+      shuffle: True
+    validation:
+      enable: True
+      fecha_inicio: "2021-02-01 00:00:00"
+      fecha_fin: "2021-03-30 23:00:00"
+      shuffle: True
+    test:
+      enable: True
+      fecha_inicio: "2021-04-01 00:00:00"
+      fecha_fin: "2021-04-30 23:00:00"
+      use_checkpoint: best
+  resultados:
+    visualizacion:
+      prediccion:
+        - temperatura
+        - hr
+        - precipitacion
+      muestras: "range" # random, all, list, range
+      inicio: 0
+      fin: "end"
+      paso: 50
+
+pmodel:
+  estaciones:
+    - nombre: "Villaverde"
+      id: 2706
+      format: "%Y-%m-%d %H:%M:%S"
+      metricas:
+        - temperatura
+        - hr
+        - precipitacion
+      ruta: "/home/diego/weather-control/data/processed/2706.csv"
+      longitud: -2.7978570
+      latitud: 42.3320800
+      altitud: 782
+  model:
+    use_cuda: True
+    temperatura:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.002893199770218999  # optuna
+      gru_n_layers: 1  # optuna
+      hidden_size: 100 # optuna
+      hidden_layers:
+        0: 118
+      optimizer_name: "Adam"
+    hr:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: L1
+        reduction: mean
+        coefs: None
+      lr: 0.001233310567246368  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 175  # optuna
+      hidden_layers:
+        0: 234
+      optimizer_name: "Adamax"
+    # ORIGINAL
+    # precipitacion:
+    #   name: "RedGeneral"
+    #   save_model: True
+    #   plot_intermediate_results: True
+    #   early_stop: 5
+    #   epochs: 25
+    #   loss_function:
+    #     loss_fn: CrossEntropyLoss
+    #     reduction: mean
+    #     coefs: None
+    #     weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
+    #   lr: 0.001971576126654154  # optuna
+    #   gru_n_layers: 2  # optuna
+    #   hidden_size: 50  # optuna
+    #   hidden_layers:
+    #     0: 219
+    #     1: 89
+    #   optimizer_name: "AdamW"  # optuna
+
+    precipitacion:
+      name: "RedGeneral"
+      save_model: True
+      plot_intermediate_results: True
+      early_stop: 5
+      epochs: 25
+      loss_function:
+        loss_fn: CrossEntropyLoss
+        reduction: mean
+        coefs: None
+        weights: [6.6427e-6, 6.17283e-4, 0.001953125, 4.01606425e-3, 5.681818e-3, 8.2644628e-3, 2.173913e-2, 1]
+        #[1/150541, 1/1621, 1/512, 1/249, 1/176, 1/121, 1/46, 1/1]
+      lr: 0.005821622396546932  # optuna
+      gru_n_layers: 2  # optuna
+      hidden_size: 125  # optuna
+      hidden_layers:
+        0: 188
+        1: 173
+        2: 104
+        3: 84
+      optimizer_name: "RMSprop"  # optuna
+  dataloaders:
+    train:
+      enable: True
+      fecha_inicio: "2020-03-15 00:00:00"
+      fecha_fin: "2021-01-31 23:00:00"
+      shuffle: True
+    validation:
+      enable: True
+      fecha_inicio: "2021-02-01 00:00:00"
+      fecha_fin: "2021-03-30 23:00:00"
+      shuffle: True
+    test:
+      enable: True
+      fecha_inicio: "2021-04-01 00:00:00"
+      fecha_fin: "2021-07-31 23:00:00"
+      use_checkpoint: best
+  resultados:
+    muestras: "range" # random, all, list, range
+    inicio: 0
+    fin: "end"
+    paso: 10
