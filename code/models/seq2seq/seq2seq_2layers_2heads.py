@@ -51,7 +51,7 @@ class RNNEncoder(nn.Module):
             hidden (tensor): (N, HID) 
                 La salida hidden de la red es (D * NL, N, HID) y es convertida (N, HID) en el codigo
         """
-        if self.device == 'cuda' and not torch.cuda.is_available():  # esto hace que modelos entrenados en GPU corran en CPUS
+        if self.device == 'cuda':  # and not torch.cuda.is_available():  # esto hace que modelos entrenados en GPU corran en CPUS
             self.device = 'cpu'  
             
         assert input_seq.ndim == 3, f"{self.__class__}. dims(input) no es 3, batch first???!!!"
