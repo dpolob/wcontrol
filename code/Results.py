@@ -173,9 +173,9 @@ def pmodel(file, temp, hr, rain):
         y_pred, y_real, y_nwp = predicciones['y_pred'], predicciones['y_real'], predicciones['y_nwp']
         muestras = generar_muestras(**cfg.pmodel.resultados, len_dataset=len(y_pred))
         for idx in tqdm(muestras):
-            plt.plot(np.argmax(y_real[idx,...,2:], axis=-1).reshape(-1,1), 'green')
-            plt.plot(np.argmax(y_pred[idx,...,2:], axis=-1).reshape(-1,1), 'red')
-            plt.plot(np.argmax(y_nwp[idx,...,2:], axis=-1).reshape(-1,1), 'magenta')
+            plt.plot(np.argmax(y_real[idx,...], axis=-1).reshape(-1,1), 'green')
+            plt.plot(np.argmax(y_pred[idx,...], axis=-1).reshape(-1,1), 'red')
+            plt.plot(np.argmax(y_nwp[idx,...], axis=-1).reshape(-1,1), 'magenta')
             plt.savefig(plots_path / f"{idx}.png", dpi=300)
             plt.close()
             
