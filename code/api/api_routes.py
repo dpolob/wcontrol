@@ -16,6 +16,14 @@ from common.utils.scalers import Escalador
 logger = logging.getLogger(__name__)
 
 class Prediccion(Resource):
+
+    def options(self):
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "*")
+        response.headers.add('Access-Control-Allow-Methods', "*")
+        return response
+
        
     def get(self):
         token = "Token " + secrets.token_cesens
@@ -64,12 +72,13 @@ class Prediccion(Resource):
             path_zmodel_checkpoints = secrets.path_zmodel_checkpoints
             path_zmodel = secrets.path_zmodel
             model = torch.load(Path(path_zmodel) , map_location=torch.device('cpu'))
-            
+            logger.info("pasado load") 
             model.to(device)
+            logger.info("pasado todevice")
             trainer = tr.TorchTrainer(model=model,
                                     device=device,
                                     checkpoint_folder= path_zmodel_checkpoints)
-            
+            logger.info("pasado trainer")
             trainer._load_best_checkpoint()
             logger.info("[Prediccion] Cargado modelo zmodel")
             y_pred = trainer.predict_one(Xf, Yt, P)
@@ -168,10 +177,12 @@ class Prediccion(Resource):
             logger.error(f"[Prediccion] Problemas en el desescalado. {e}")
             return Response(f"Problemas en el desescalado. {e}", status=500, mimetype='text/plain')             
         logger.info("[Prediccion] Generando JSON de salida")    
-        return make_response(jsonify(dict({"timestamp": now.timestamp(),
+        response =  make_response(jsonify(dict({"timestamp": now.timestamp(),
                                            "estacion": secrets.estacion,
                                            "data": [
                                                {"temp": y_t.tolist()},
                                                {"hr": y_hr.tolist()},
                                                {"rain": y_rain.tolist()}
                                                ]})), 200)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
