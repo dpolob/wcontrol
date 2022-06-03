@@ -356,7 +356,8 @@ def pipeline(file):
             y_rain[idx, idj] = np.where(y_rain[idx, idj] < max(y_rain[idx, idj]), 0, 1)
     
     y_pred_zmodel = np.concatenate([y_t,y_hr,y_rain], axis=-1)
-
+    print(f"\t {y_pred_zmodel.shape}", end='')
+    print(f"\t{OK}")
 
     print(Fore.YELLOW + "Obteniendo valores reales y de prevision del conjunto de test desde el dataset de la estacion objetivo" + Style.RESET_ALL)
     # tambien necesitamos el y_real y y_nwp que estan en dataset_pmodel 
