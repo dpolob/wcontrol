@@ -5,7 +5,7 @@ Tutor: Rosario López Gómez
 
 MÁSTER:
 Máster en Ciencia de Datos y Aprendizaje Automático
-Escuela de Máster y Doctorado. Universida de La Rioja 
+Escuela de Máster y Doctorado. Universidad de La Rioja 
 
 AÑO ACADÉMICO: 2021/2022
 
