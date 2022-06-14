@@ -31,59 +31,7 @@ from common.data_preprocessing.modules import (no_NaNs,
 
 logger = logging.getLogger(__name__)
 
-# def no_NaNs(df: pd.DataFrame=None) -> bool:
-#     """ Chequea si un dataframe tiene NaNs"""
-    
-#     return False if df.isna().sum().sum() > 0 else True
 
-# def distanciasCdG(latitudes: list, longitudes: list, altitudes: list) -> tuple:
-#     """Calcula el centro de gravedad de una lista de coordenadas
-
-#     Args:
-#         latitudes (list): Lista de latitudes
-#         longitudes (list): Lista de longitudes
-#         altitudes (list): Lista de altitudes
-
-#     Returns:
-#         tuple: (latitud del cdg, longitud del cdg, altitud del cdg)
-#     """
-#     return np.array(latitudes).mean(), np.array(longitudes).mean(), np.array(altitudes).mean()
-    
-# def haversine(lat1: float, long1: float, lat2: float, long2: float) -> float:
-#     """Calcula la distancia entre dos punto dados por latitud y longitud
-
-#     Args:
-#         lat1 (float): Latitud punto 1
-#         long1 (float): Longitud punto 1
-#         lat2 (float): Latitud punto 2
-#         long2 (float): Longitud punto 2
-
-#     Returns:
-#         float: Distancia en km
-#     """
-#     degree_to_rad = float(pi / 180.0)
-#     d_lat = (lat2 - lat1) * degree_to_rad
-#     d_long = (long2 - long1) * degree_to_rad
-#     a = pow(sin(d_lat / 2), 2) + cos(lat1 * degree_to_rad) * cos(lat2 * degree_to_rad) * pow(sin(d_long / 2), 2)
-#     c = 2 * atan2(sqrt(a), sqrt(1 - a))
-#     km = 6367 * c
-#     return abs(km)
-
-# def temporales(df: pd.DataFrame= None, trig: bool=False) -> pd.DataFrame:
-#     if 'fecha' not in df.columns:
-#         df['fecha'] = df.index
-#         borrar_fecha = True
-        
-#     df['dia'] = df['fecha'].apply(lambda x: x.day / 31)
-#     df['mes'] = df['fecha'].apply(lambda x: x.month / 12)
-#     df['hora'] = df['fecha'].apply(lambda x: x.hour / 24)
-#     if borrar_fecha: df.drop(columns=['fecha'], inplace=True)
-#     return df
-
-# def check_variables_entrada(df: pd.DataFrame=None) -> bool:
-#     """Comprueba que el dataset contenga columnas de temperatura, hr y precipitacion"""
-    
-#     return False if 'temperatura' not in df.columns or 'hr' not in df.columns or 'precipitacion' not in df.columns else True
 
 def quitar_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: dict=None) -> bool:
     """Comprueba que no haya outliers en el dataset"""
@@ -96,37 +44,6 @@ def quitar_outliers(df: pd.DataFrame=None, metricas: list=None, outliers: dict=N
             df.loc[df[metrica] < outlier['min'] * (1 + outlier['tol'] / 100), metrica] = outlier['min']
     return df
 
-# def check_longitud(df: pd.DataFrame=None, longitud: int=None) -> bool:
-#     """Comprueba la longitud de un dataset"""
-    
-#     return True if len(df) > longitud else False
-    
-# def quitar_nans(df: pd.DataFrame=None) -> pd.DataFrame:
-#     df = df.fillna(df.mean())
-#     return df
-
-# def variables_bioclimaticas(df: pd.DataFrame=None) -> tuple:
-#     var_bio =[]
-#     df['integraltermica'] = bio.integral_termica(temperatura=np.array(df['temperatura'].values))
-#     var_bio.append('integraltermica')
-#     df['integralrain'] = bio.integral_precipitacion(arr=np.array(df['precipitacion'].values,), periodo=3 * 30)
-#     df['indiceangtrom'] = bio.indice_angtrom(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-#     var_bio.append('indiceangtrom')
-#     df['indicemartonne'] = bio.indice_martonne(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values),muestras_dia=24)
-#     var_bio.append('indicemartonne')
-#     df['indicelang'] = bio.indice_lang(precipitacion=np.array(df['precipitacion'].values), temperatura=np.array(df['temperatura'].values), muestras_dia=24)
-#     var_bio.append('indicelang')
-#     return (var_bio, df)        
-    
-# def variables_macd(df: pd.DataFrame=None) -> tuple:
-#     var_macd = []
-#     df['tempmacd'] = macd(np.array(df['temperatura'].values))
-#     var_macd.append('tempmacd')
-#     df['hrmacd'] = macd(np.array(df['hr'].values))
-#     var_macd.append('hrmacd')
-#     df['precipitacionmacd'] = macd(np.array(df['precipitacion'].values))
-#     var_macd.append('precipitacionmacd')
-#     return (var_macd, df)         
 
 def recortar(df: pd.DataFrame, fecha_maxima: datetime, pasado: int):
     df = df.loc[df.index <= fecha_maxima, :]
@@ -233,6 +150,7 @@ def generar_variables_pasado(estaciones: list, outliers: dict, pasado: int, now:
 
 def fetch_futuro(url: str, now: datetime, future: int ) -> pd.DataFrame:
     futuro = {"fecha": [], "temperatura": [], "hr": [], "precipitacion": []}
+    _ = Request("https://www.eltiempo.es/villaverde-de-rioja.html?v=por_hora")  #para que se cachee
     req = Request(url)
     html_page = urlopen(req)
     html_text = BeautifulSoup(html_page, "html.parser").get_text()
